@@ -1,0 +1,13 @@
+import React from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App";
+import "./index.css";
+
+const container = document.getElementById("root") as HTMLElement | null;
+if (!container) throw new Error("No #root element found in index.html");
+
+createRoot(container).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);

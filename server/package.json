@@ -1,0 +1,38 @@
+{
+  "name": "google-python-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only --esm src/index.ts",
+    "build": "tsc -p .",
+    "start": "node dist/index.js",
+    "scrape:links": "ts-node src/scripts/scrape_links.ts",
+    "clean": "rimraf dist node_modules"
+  },
+  "dependencies": {
+    "@mozilla/readability": "^0.4.0",
+    "axios": "^1.5.0",
+    "cheerio": "^1.0.0-rc.12",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "html-to-text": "^9.0.5",
+    "jsdom": "^22.1.0",
+    "mongoose": "^7.7.0",
+    "morgan": "^1.10.0",
+    "puppeteer": "^21.3.4"
+  },
+  "devDependencies": {
+    "@types/cheerio": "^0.22.35",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.20",
+    "@types/jsdom": "^27.0.0",
+    "@types/morgan": "^1.9.4",
+    "@types/node": "^24.10.1",
+    "rimraf": "^5.0.0",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "google-Python",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "start:server": "pnpm --filter server run start",
+    "start:client": "pnpm --filter client run dev",
+    "start": "concurrently \"pnpm --filter server run dev\" \"pnpm --filter client run dev\"",
+    "build": "pnpm -w -r run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "pnpm": "^8.0.0"
+  }
+}
