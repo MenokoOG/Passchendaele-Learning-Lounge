@@ -1,4 +1,3 @@
-// src/App.tsx
 import React from "react";
 import Lessons from "./pages/Lessons";
 import ThemeToggle from "./components/ThemeToggle";

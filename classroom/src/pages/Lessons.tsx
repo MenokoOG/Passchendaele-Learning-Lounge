@@ -11,12 +11,15 @@ export default function Lessons() {
     setLoading(true);
     try {
       const data = await listRaw();
-      setLessons(
-        (data || []).sort(
-          (a: any, b: any) =>
-            new Date(b.fetchedAt).valueOf() - new Date(a.fetchedAt).valueOf()
-        )
-      );
+
+      // Sort ascending: oldest first (change to descending for newest-first)
+      const sorted = (data || []).sort((a: any, b: any) => {
+        const ta = a?.fetchedAt ? new Date(a.fetchedAt).valueOf() : 0;
+        const tb = b?.fetchedAt ? new Date(b.fetchedAt).valueOf() : 0;
+        return ta - tb;
+      });
+
+      setLessons(sorted);
     } catch (err) {
       console.error(err);
     } finally {

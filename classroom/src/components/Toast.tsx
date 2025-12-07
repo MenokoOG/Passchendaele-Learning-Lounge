@@ -1,4 +1,3 @@
-// src/components/Toast.tsx
 import React, { useEffect } from "react";
 
 type ToastType = "success" | "error" | "info";
@@ -28,10 +27,11 @@ export default function Toast({
     "fixed right-4 bottom-6 z-50 max-w-xs w-full shadow-lg rounded-md px-4 py-3 flex items-start gap-3 transition-transform transform";
   const typeClasses =
     type === "success"
-      ? "bg-emerald-600 text-white"
+      ? "bg-emerald-600 text-white border-0"
       : type === "error"
-      ? "bg-red-600 text-white"
-      : "bg-slate-800 text-slate-100";
+      ? "bg-red-600 text-white border-0"
+      : // info / neutral toast (theme aware)
+        "bg-white/95 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700";
 
   return (
     <div className={`${base} ${typeClasses}`} role="status" aria-live="polite">
