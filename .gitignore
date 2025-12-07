@@ -51,4 +51,4 @@ dist-ssr
 Thumbs.db
 .nx/cache
 *.tsbuildinfo
-.json
+*.json

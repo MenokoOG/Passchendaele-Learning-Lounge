@@ -23,26 +23,26 @@ export default function Toast({
 
   if (!visible) return null;
 
-  const base =
-    "fixed right-4 bottom-6 z-50 max-w-xs w-full shadow-lg rounded-md px-4 py-3 flex items-start gap-3 transition-transform transform";
-  const typeClasses =
+  // prefer CSS variables from index.css; fallback to color classes
+  const typeClass =
     type === "success"
-      ? "bg-emerald-600 text-white border-0"
+      ? "toast-success"
       : type === "error"
-      ? "bg-red-600 text-white border-0"
-      : // info / neutral toast (theme aware)
-        "bg-white/95 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700";
+      ? "toast-error"
+      : "toast-info";
 
   return (
-    <div className={`${base} ${typeClasses}`} role="status" aria-live="polite">
-      <div className="flex-1 text-sm leading-tight">{message}</div>
-      <button
-        onClick={() => onClose?.()}
-        aria-label="Close toast"
-        className="opacity-90 hover:opacity-100 ml-2 text-xs"
-      >
-        ✕
-      </button>
+    <div role="status" aria-live="polite" className={`toast-root ${typeClass}`}>
+      <div className="toast-content">
+        <div className="toast-message">{message}</div>
+        <button
+          onClick={() => onClose?.()}
+          aria-label="Close toast"
+          className="toast-close"
+        >
+          ✕
+        </button>
+      </div>
     </div>
   );
 }

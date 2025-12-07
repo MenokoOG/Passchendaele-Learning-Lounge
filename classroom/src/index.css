@@ -2,7 +2,250 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Smooth bg/text transitions when toggling theme */
+/* --------------------------
+   Theme variables (light + dark)
+   -------------------------- */
+
+/* Comfortable classroom palette — tweak these to taste */
+:root {
+  /* primary branding (used for accents / logo) */
+  --classroom-primary: #0ea5a4; /* teal-500 */
+  --classroom-primary-600: #0b9a94;
+
+  /* replaced amber with softer periwinkle/indigo */
+  --classroom-strip: #7c9cf5; /* soft periwinkle */
+  --classroom-strip-600: #5c7be6; /* slightly deeper indigo */
+
+  /* surfaces */
+  --surface-bg: #ffffff;
+  --surface-contrast: #f8fafc; /* subtle card background */
+  --surface-border: rgba(15, 23, 42, 0.06);
+
+  /* text */
+  --text-default: #0f172a; /* slate-900 */
+  --text-muted: #64748b; /* slate-500 */
+
+  /* success */
+  --success: #10b981;
+  --success-surface: rgba(16, 185, 129, 0.06);
+
+  /* toast */
+  --toast-info-bg: rgba(15, 23, 42, 0.92);
+  --toast-success-bg: rgba(16, 185, 129, 0.95);
+  --toast-error-bg: rgba(239, 68, 68, 0.95);
+
+  /* shimmer / skeleton */
+  --shimmer-light: #eef2f7;
+  --shimmer-dark: #1f2937;
+}
+
+/* dark mode overrides when root has .dark (Tailwind convention) */
+:root.dark {
+  --classroom-primary: #4fd1c5; /* slightly brighter teal for dark */
+  --classroom-primary-600: #2bb6aa;
+
+  /* dark-mode friendly periwinkle/indigo */
+  --classroom-strip: #9db0ff;
+  --classroom-strip-600: #7a94f0;
+
+  --surface-bg: #0b1220;
+  --surface-contrast: #071025;
+  --surface-border: rgba(148, 163, 184, 0.08);
+
+  --text-default: #e6eef8;
+  --text-muted: #9aa7b8;
+
+  --success: #34d399;
+  --success-surface: rgba(34, 197, 94, 0.08);
+
+  --toast-info-bg: rgba(0, 0, 0, 0.6);
+  --toast-success-bg: rgba(16, 185, 129, 0.16);
+  --toast-error-bg: rgba(239, 68, 68, 0.16);
+
+  --shimmer-light: #263248;
+  --shimmer-dark: #0f172a;
+}
+
+/* --------------------------
+   Theme-aware utility classes
+   -------------------------- */
+
+/* Card surface — use for lesson cards, panels, etc. */
+.card-surface {
+  background: var(--surface-bg);
+  color: var(--text-default);
+  border-radius: 0.5rem;
+}
+
+/* Surface border helper */
+.border-surface-border {
+  border-color: var(--surface-border);
+}
+
+/* text helpers */
+.text-classroom {
+  color: var(--classroom-primary);
+}
+.text-classroom-muted {
+  color: var(--text-muted);
+}
+
+/* button styles */
+.btn-classroom {
+  background: linear-gradient(
+    180deg,
+    var(--classroom-primary),
+    var(--classroom-primary-600)
+  );
+  color: white;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  transition: filter 120ms ease, transform 120ms ease;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+.btn-classroom:hover {
+  filter: brightness(0.95);
+  transform: translateY(-1px);
+}
+.btn-classroom:disabled {
+  opacity: 0.6;
+  transform: none;
+  filter: none;
+}
+
+/* neutral surface button (light clickable chip) */
+.btn-surface {
+  background: linear-gradient(
+    180deg,
+    var(--surface-contrast),
+    var(--surface-bg)
+  );
+  color: var(--text-default);
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--surface-border);
+  font-weight: 500;
+}
+.btn-surface:hover {
+  filter: brightness(0.98);
+  transform: translateY(-1px);
+}
+
+/* success surface block (e.g. rewrite result box) */
+.bg-success-surface {
+  background: var(--success-surface);
+  color: var(--text-default);
+}
+
+/* small secondary surface used inside sidebars */
+.bg-classroom-surface-2 {
+  background: linear-gradient(
+    180deg,
+    var(--surface-contrast),
+    var(--surface-bg)
+  );
+}
+
+/* shimmer used as skeleton background */
+.bg-surface-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--shimmer-light),
+    #e6eef8,
+    var(--shimmer-light)
+  );
+  opacity: 0.9;
+}
+
+/* border shortcut to use in components */
+.border-surface-border {
+  border-color: var(--surface-border);
+}
+
+/* branding strip (soft bar near header) - uses primary + strip for a calm gradient */
+.branding-strip {
+  background: linear-gradient(
+    90deg,
+    rgba(14, 165, 164, 0.08),
+    rgba(124, 156, 245, 0.06)
+  );
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+/* text color utilities fallback */
+.text-success {
+  color: var(--success);
+}
+
+/* --------------------------
+   Toast styles (small, non-blocking)
+   -------------------------- */
+.toast-root {
+  position: fixed;
+  right: 1rem;
+  bottom: 1.25rem;
+  z-index: 60;
+  max-width: 20rem;
+  width: 100%;
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.35);
+  transform: translateY(6px);
+  opacity: 0;
+  animation: toast-in 240ms cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+  overflow: hidden;
+  font-size: 0.95rem;
+}
+
+/* type backgrounds — leverage variables so they respect theme */
+.toast-info {
+  background: var(--toast-info-bg);
+  color: white;
+}
+.toast-success {
+  background: var(--toast-success-bg);
+  color: white;
+}
+.toast-error {
+  background: var(--toast-error-bg);
+  color: white;
+}
+
+.toast-content {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+}
+.toast-message {
+  flex: 1;
+  line-height: 1.1;
+}
+.toast-close {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-weight: 600;
+  padding: 0 0.25rem;
+  cursor: pointer;
+  opacity: 0.9;
+}
+
+/* small entrance animation */
+@keyframes toast-in {
+  from {
+    transform: translateY(12px) scale(0.99);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* --------------------------
+   Small helpful utilities (prose, clamp, motion)
+   -------------------------- */
 :root {
   color-scheme: light;
 }
@@ -10,22 +253,17 @@
   color-scheme: dark;
 }
 
-/* global background + subtle transition for theme changes */
 html,
 body,
 #root {
   height: 100%;
 }
-* {
-  transition: color 0.18s ease, background-color 0.18s ease,
-    border-color 0.18s ease, box-shadow 0.18s ease;
-}
 
-/* small helpers */
 .prose {
   max-width: none;
 }
 
+/* simple clamp line utility (used in cards) */
 .line-clamp-3 {
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -33,7 +271,10 @@ body,
   overflow: hidden;
 }
 
-/* tiny card utility (use via class list) */
-.card {
-  @apply rounded-lg p-4 border shadow-sm bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700;
+/* reduce motion for preferences */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }

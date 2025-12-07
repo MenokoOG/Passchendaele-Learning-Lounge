@@ -1,3 +1,4 @@
+// src/pages/Lesson.tsx
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getRaw, rewriteRaw } from "../api";
@@ -9,14 +10,31 @@ export default function LessonPage() {
   const [loading, setLoading] = useState(false);
   const [rewriting, setRewriting] = useState(false);
   const [rewritten, setRewritten] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ msg: string; type?: any } | null>(null);
+
+  // Toast state (message, type, visible)
+  const [toast, setToast] = useState<{
+    msg: string;
+    type?: "success" | "error" | "info";
+    visible?: boolean;
+  } | null>(null);
+
+  function showToast(msg: string, type: "success" | "error" | "info" = "info") {
+    setToast({ msg, type, visible: true });
+  }
+
+  function hideToast() {
+    setToast(null);
+  }
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
     getRaw(id)
       .then((d) => setDoc(d))
-      .catch(console.error)
+      .catch((e) => {
+        console.error("getRaw error", e);
+        showToast("Failed to load lesson", "error");
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -25,51 +43,72 @@ export default function LessonPage() {
     setRewriting(true);
     try {
       const res = await rewriteRaw(id);
-      setRewritten(res.rewritten || "(no content)");
-      setToast({ msg: "Rewrite complete", type: "success" });
+      setRewritten(res?.rewritten || "(no content)");
+      showToast("Rewrite finished", "success");
       console.log("rewrite response", res);
     } catch (err: any) {
-      console.error(err);
-      setToast({ msg: "Rewrite failed", type: "error" });
+      console.error("rewrite error", err);
+      showToast("Rewrite failed", "error");
     } finally {
       setRewriting(false);
     }
   }
 
-  function copyUrl() {
+  async function copyUrl() {
+    const url = `${window.location.origin}/lesson/${id}`;
     try {
-      const url = window.location.href;
-      navigator.clipboard
-        ?.writeText(url)
-        .then(() => setToast({ msg: "URL copied", type: "success" }))
-        .catch(() => setToast({ msg: "Copied (fallback)", type: "info" }));
-    } catch {
-      setToast({ msg: "Could not copy URL", type: "error" });
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        showToast("Link copied to clipboard", "success");
+      } else {
+        // Legacy fallback
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "absolute";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        ta.remove();
+        if (ok) showToast("Link copied (fallback)", "success");
+        else showToast("Copy not supported", "error");
+      }
+    } catch (err) {
+      console.error("copy failed", err);
+      showToast("Copy failed", "error");
     }
   }
 
-  function shareUrl() {
-    const url = window.location.href;
-    if ((navigator as any).share) {
-      (navigator as any)
-        .share({ title: doc?.title || "Lesson", url })
-        .catch((e: any) => setToast({ msg: "Share cancelled", type: "info" }));
-    } else {
-      // fallback: copy + toast
-      navigator.clipboard
-        ?.writeText(url)
-        .then(() => setToast({ msg: "Link copied for sharing", type: "info" }))
-        .catch(() => setToast({ msg: "Share not available", type: "error" }));
+  async function onShare() {
+    const url = `${window.location.origin}/lesson/${id}`;
+    try {
+      if ((navigator as any).share) {
+        await (navigator as any).share({
+          title: doc?.title || "Lesson",
+          text: `Check out this lesson: ${doc?.title || ""}`,
+          url,
+        });
+        showToast("Shared successfully", "success");
+      } else {
+        // fallback: copy & toast
+        await copyUrl();
+        showToast("Sharing not supported — link copied", "info");
+      }
+    } catch (err) {
+      console.error("share failed", err);
+      showToast("Share failed", "error");
     }
   }
 
   if (loading) return <div>Loading lesson...</div>;
+
   if (!doc)
     return (
       <div className="space-y-4">
-        <div>Lesson not found.</div>
-        <Link to="/" className="text-classroom-primary-600 dark:text-amber-300">
-          Back
+        <div className="text-classroom-muted">Lesson not found.</div>
+        <Link to="/" className="text-classroom">
+          ← Back
         </Link>
       </div>
     );
@@ -81,140 +120,139 @@ export default function LessonPage() {
   const sections = doc.metadata?.sections || [];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            {title}
-          </h2>
-          <div className="text-sm text-slate-500 dark:text-slate-400">
-            {doc.type} • Fetched: {new Date(doc.fetchedAt).toLocaleString()}
+    <>
+      <div className="space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-classroom">{title}</h2>
+            <div className="text-sm text-classroom-muted">
+              {doc.type} • Fetched: {new Date(doc.fetchedAt).toLocaleString()}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRewrite}
+              disabled={rewriting}
+              className="px-3 py-2 rounded btn-classroom text-sm disabled:opacity-60"
+              aria-pressed={rewriting}
+            >
+              {rewriting ? "Rewriting…" : "Rewrite (OpenAI)"}
+            </button>
+
+            <a
+              href={doc.url}
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-2 rounded btn-surface text-sm"
+            >
+              Original
+            </a>
+
+            <button
+              onClick={copyUrl}
+              className="px-3 py-2 rounded btn-surface text-sm"
+              title="Copy lesson URL"
+            >
+              Copy URL
+            </button>
+
+            <button
+              onClick={onShare}
+              className="px-3 py-2 rounded btn-surface text-sm"
+              title="Share"
+            >
+              Share
+            </button>
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={onRewrite}
-            disabled={rewriting}
-            className="px-3 py-2 rounded text-white text-sm hover:brightness-95 disabled:opacity-60"
-            style={{ backgroundColor: "#0ea5a4" }}
-          >
-            {rewriting ? "Rewriting…" : "Rewrite (OpenAI)"}
-          </button>
+        {youTubeMatch && (
+          <div className="w-full aspect-video bg-black rounded overflow-hidden">
+            <iframe
+              className="w-full h-full"
+              src={`https://www.youtube.com/embed/${youTubeMatch[1]}`}
+              title="lecture"
+              frameBorder="0"
+              allowFullScreen
+            />
+          </div>
+        )}
 
-          <button
-            onClick={copyUrl}
-            className="px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded text-sm text-slate-900 dark:text-slate-100"
-          >
-            Copy URL
-          </button>
-
-          <button
-            onClick={shareUrl}
-            className="px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded text-sm text-slate-900 dark:text-slate-100"
-          >
-            Share
-          </button>
-
-          <a
-            href={doc.url}
-            target="_blank"
-            rel="noreferrer"
-            className="px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded text-sm text-slate-900 dark:text-slate-100"
-          >
-            Original
-          </a>
-        </div>
-      </div>
-
-      {youTubeMatch ? (
-        <div className="aspect-video bg-black">
-          <iframe
-            className="w-full h-full"
-            src={`https://www.youtube.com/embed/${youTubeMatch[1]}`}
-            title="lecture"
-            frameBorder="0"
-            allowFullScreen
-          />
-        </div>
-      ) : null}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          <section className="rounded-lg p-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-            <h3 className="font-semibold mb-2 text-slate-900 dark:text-slate-100">
-              Lesson content
-            </h3>
-            {doc.contentHtml ? (
-              <div
-                className="prose dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: doc.contentHtml }}
-              />
-            ) : (
-              <pre className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
-                {doc.text || "(no text)"}
-              </pre>
-            )}
-          </section>
-
-          {rewritten ? (
-            <section className="rounded-lg p-4 border border-emerald-800/20 bg-emerald-900/5 dark:bg-emerald-900/10">
-              <h3 className="font-semibold mb-2 text-emerald-900 dark:text-emerald-200">
-                Rewrite (OpenAI)
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <section className="card-surface p-4 rounded border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
+              <h3 className="font-semibold mb-3 text-classroom">
+                Lesson content
               </h3>
-              <div className="whitespace-pre-wrap text-slate-900 dark:text-slate-100 text-sm">
-                {rewritten}
-              </div>
+
+              {doc.contentHtml ? (
+                <div
+                  className="prose dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: doc.contentHtml }}
+                />
+              ) : (
+                <div className="card-surface p-4 rounded border border-slate-200/60 dark:border-slate-700/60">
+                  <pre className="whitespace-pre-wrap text-sm text-classroom">
+                    {doc.text || "(no text)"}
+                  </pre>
+                </div>
+              )}
             </section>
-          ) : null}
+
+            {rewritten && (
+              <section className="bg-success-surface border border-transparent p-4 rounded">
+                <h3 className="font-semibold mb-2 text-success">
+                  Rewrite (OpenAI)
+                </h3>
+                <div className="whitespace-pre-wrap text-classroom text-sm">
+                  {rewritten}
+                </div>
+              </section>
+            )}
+          </div>
+
+          <aside className="card-surface p-4 rounded border border-slate-200/60 dark:border-slate-700/60 shadow-sm sticky top-24 max-h-[60vh] overflow-auto">
+            <h4 className="font-semibold text-classroom">Sections</h4>
+            <div className="mt-3 space-y-2">
+              {sections.length === 0 && (
+                <div className="text-sm text-classroom-muted">
+                  No sections available.
+                </div>
+              )}
+              {sections.map((s: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="p-2 bg-classroom-surface-2 rounded"
+                  aria-hidden={false}
+                >
+                  <div className="font-medium text-classroom">
+                    {s.heading || `Part ${idx + 1}`}
+                  </div>
+                  <div className="text-xs text-classroom-muted mt-1">
+                    {(s.text || "").slice(0, 140)}
+                    {(s.text || "").length > 140 ? "…" : ""}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </aside>
         </div>
 
-        <aside className="rounded-lg p-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-          <h4 className="font-semibold text-slate-900 dark:text-slate-100">
-            Sections
-          </h4>
-          <div className="mt-3 space-y-2 max-h-96 overflow-auto">
-            {sections.length === 0 && (
-              <div className="text-sm text-slate-500 dark:text-slate-400">
-                No sections available.
-              </div>
-            )}
-            {sections.map((s: any, idx: number) => (
-              <div
-                key={idx}
-                className="p-2 bg-slate-50 dark:bg-slate-900/40 rounded"
-              >
-                {s.heading ? (
-                  <div className="font-medium text-slate-900 dark:text-slate-100">
-                    {s.heading}
-                  </div>
-                ) : (
-                  <div className="font-medium text-slate-900 dark:text-slate-100">
-                    Part {idx + 1}
-                  </div>
-                )}
-                <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                  {(s.text || "").slice(0, 140)}
-                  {(s.text || "").length > 140 ? "…" : ""}
-                </div>
-              </div>
-            ))}
-          </div>
-        </aside>
-      </div>
-
-      <div>
-        <Link to="/" className="text-slate-700 dark:text-slate-300">
-          ← Back to lessons
-        </Link>
+        <div>
+          <Link to="/" className="text-classroom-muted">
+            ← Back to lessons
+          </Link>
+        </div>
       </div>
 
       <Toast
-        visible={!!toast}
-        message={toast?.msg || ""}
-        type={toast?.type || "info"}
-        onClose={() => setToast(null)}
+        visible={!!toast?.visible}
+        message={toast?.msg ?? ""}
+        type={toast?.type ?? "info"}
+        onClose={hideToast}
+        duration={3000}
       />
-    </div>
+    </>
   );
 }
