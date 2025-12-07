@@ -96,8 +96,8 @@ export default function LessonPage() {
           <button
             onClick={onRewrite}
             disabled={rewriting}
-            className="px-3 py-2 bg-classroom-primary text-white rounded text-sm"
-            style={{ backgroundColor: undefined }}
+            className="px-3 py-2 rounded text-white text-sm hover:brightness-95 disabled:opacity-60"
+            style={{ backgroundColor: "#0ea5a4" }}
           >
             {rewriting ? "Rewriting…" : "Rewrite (OpenAI)"}
           </button>
