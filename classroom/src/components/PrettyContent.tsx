@@ -1,5 +1,27 @@
 import React from "react";
 
+/**
+ * PrettyContent
+ * - linkifies plain URLs in paragraphs
+ * - preserves code block detection from prior implementation
+ */
+
+function linkifyTextToNodes(text: string) {
+  // splits text into array of strings and <a> elements
+  // basic url regex
+  const urlRe = /(https?:\/\/[^\s)'"<>]+)/gi;
+  const parts: Array<string | { url: string }> = [];
+  let lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = urlRe.exec(text)) !== null) {
+    if (m.index > lastIndex) parts.push(text.slice(lastIndex, m.index));
+    parts.push({ url: m[0] });
+    lastIndex = m.index + m[0].length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts;
+}
+
 export default function PrettyContent({ text }: { text: string }) {
   if (!text) return null;
 
@@ -22,15 +44,25 @@ export default function PrettyContent({ text }: { text: string }) {
   }
 
   function renderInlineParagraph(block: string, idx: number) {
-    const parts = block.split("\n").map((l, i) => (
-      <span key={i}>
-        {l}
-        {i < block.split("\n").length - 1 ? <br /> : null}
-      </span>
-    ));
+    // linkify URLs inside paragraphs
+    const pieces = linkifyTextToNodes(block);
     return (
       <p key={idx} className="leading-relaxed text-classroom-muted">
-        {parts}
+        {pieces.map((p, i) =>
+          typeof p === "string" ? (
+            <span key={i}>{p}</span>
+          ) : (
+            <a
+              key={i}
+              href={p.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-classroom underline"
+            >
+              {p.url}
+            </a>
+          )
+        )}
       </p>
     );
   }
@@ -41,11 +73,11 @@ export default function PrettyContent({ text }: { text: string }) {
         const hd = block.match(/^\s{0,}#{1,6}\s+(.*)$/);
         if (hd) {
           const level = block.match(/^(\s{0,})(#{1,6})\s+/)?.[2].length ?? 2;
-          const text = hd[1];
-          if (level === 1) return <h1 key={idx}>{text}</h1>;
-          if (level === 2) return <h2 key={idx}>{text}</h2>;
-          if (level === 3) return <h3 key={idx}>{text}</h3>;
-          return <h4 key={idx}>{text}</h4>;
+          const txt = hd[1];
+          if (level === 1) return <h1 key={idx}>{txt}</h1>;
+          if (level === 2) return <h2 key={idx}>{txt}</h2>;
+          if (level === 3) return <h3 key={idx}>{txt}</h3>;
+          return <h4 key={idx}>{txt}</h4>;
         }
 
         const mdHeading2 = block.match(/^\s{0,}##\s+(.*)$/);
@@ -64,7 +96,6 @@ export default function PrettyContent({ text }: { text: string }) {
           const cleaned = lines
             .map((l) => (isFinite(minIndent) ? l.slice(minIndent) : l))
             .join("\n");
-
           return (
             <pre
               key={idx}

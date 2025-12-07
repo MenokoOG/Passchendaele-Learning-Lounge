@@ -1,32 +1,108 @@
-import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { getRaw, rewriteRaw } from "../api";
+import React, { useEffect, useMemo, useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { getRaw, rewriteRaw, listRaw } from "../api";
 import Toast from "../components/Toast";
 import PrettyContent from "../components/PrettyContent";
 
+/**
+ * LessonPage
+ * - tighter spacing for content area
+ * - sanitize/augment contentHtml anchors to open in new tabs
+ * - linkify plain-text content (via PrettyContent)
+ * - extract video links and list them on page
+ * - Prev/Next navigation (uses listRaw)
+ */
+
+function sanitizeAndEnhanceHtml(html?: string) {
+  if (!html) return "";
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+
+    // Make all anchors open in a new tab and safe rel
+    doc.querySelectorAll("a").forEach((a) => {
+      const href = a.getAttribute("href");
+      if (!href) return;
+      // keep same-origin / internal links opening in same tab? For now open all external and http links in new tab
+      a.setAttribute("target", "_blank");
+      a.setAttribute("rel", "noopener noreferrer");
+      a.classList.add("text-classroom", "underline");
+    });
+
+    // Return serialized HTML
+    return doc.body.innerHTML;
+  } catch (err) {
+    console.error("sanitize error", err);
+    return html;
+  }
+}
+
+function extractVideoLinksFromDoc(doc: any) {
+  const out = new Set<string>();
+  const addIfYouTube = (u?: string | null) => {
+    if (!u) return;
+    const m = String(u).match(
+      /(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[A-Za-z0-9_\-]+)/i
+    );
+    if (m) out.add(m[0]);
+  };
+
+  // check doc.url
+  addIfYouTube(doc?.url);
+
+  // check contentHtml anchors
+  try {
+    if (doc?.contentHtml) {
+      const parser = new DOMParser();
+      const d = parser.parseFromString(doc.contentHtml, "text/html");
+      d.querySelectorAll("a").forEach((a) => {
+        const href = a.getAttribute("href");
+        if (!href) return;
+        if (/youtube\.com|youtu\.be/i.test(href)) out.add(href);
+      });
+    }
+  } catch {}
+
+  // scan text for youtube URLs
+  if (doc?.text) {
+    const matches = String(doc.text).matchAll(/https?:\/\/[^\s)'"<>]+/gi);
+    for (const m of matches) {
+      const url = m[0];
+      if (/youtube\.com|youtu\.be/i.test(url)) out.add(url);
+    }
+  }
+
+  // also inspect metadata.sections (if they include links)
+  try {
+    const sections = doc?.metadata?.sections || [];
+    for (const s of sections) {
+      const txt = String(s.html || s.text || "");
+      const m = txt.matchAll(/https?:\/\/[^\s)'"<>]+/gi);
+      for (const mm of m as any) {
+        const u = mm[0];
+        if (/youtube\.com|youtu\.be/i.test(u)) out.add(u);
+      }
+    }
+  } catch {}
+
+  return Array.from(out);
+}
+
 export default function LessonPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [doc, setDoc] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [rewriting, setRewriting] = useState(false);
   const [rewritten, setRewritten] = useState<string | null>(null);
 
-  // toast state
+  // prev/next
+  const [lessonList, setLessonList] = useState<any[] | null>(null);
   const [toast, setToast] = useState<{
     message: string;
     type?: "success" | "error" | "info";
     visible: boolean;
   } | null>(null);
-
-  function showToast(
-    message: string,
-    type: "success" | "error" | "info" = "info"
-  ) {
-    setToast({ message, type, visible: true });
-  }
-  function hideToast() {
-    setToast(null);
-  }
 
   useEffect(() => {
     if (!id) return;
@@ -38,7 +114,31 @@ export default function LessonPage() {
         showToast("Failed to load lesson", "error");
       })
       .finally(() => setLoading(false));
+
+    // fetch list for prev/next (best-effort)
+    listRaw()
+      .then((arr) => {
+        // sort ascending by fetchedAt (oldest → newest) so Prev/Next feel natural
+        const sorted = (arr || [])
+          .slice()
+          .sort(
+            (a: any, b: any) =>
+              new Date(a.fetchedAt).valueOf() - new Date(b.fetchedAt).valueOf()
+          );
+        setLessonList(sorted);
+      })
+      .catch(() => setLessonList(null));
   }, [id]);
+
+  function showToast(
+    message: string,
+    type: "success" | "error" | "info" = "info"
+  ) {
+    setToast({ message, type, visible: true });
+  }
+  function hideToast() {
+    setToast(null);
+  }
 
   async function onRewrite() {
     if (!id) return;
@@ -56,6 +156,32 @@ export default function LessonPage() {
     }
   }
 
+  // navigation helpers
+  const currentIndex = useMemo(() => {
+    if (!lessonList || !doc) return -1;
+    return lessonList.findIndex((l) => String(l._id) === String(doc._id));
+  }, [lessonList, doc]);
+
+  const prevLesson = useMemo(() => {
+    if (currentIndex > 0 && lessonList) return lessonList[currentIndex - 1];
+    return null;
+  }, [currentIndex, lessonList]);
+
+  const nextLesson = useMemo(() => {
+    if (lessonList && currentIndex >= 0 && currentIndex < lessonList.length - 1)
+      return lessonList[currentIndex + 1];
+    return null;
+  }, [currentIndex, lessonList]);
+
+  function goPrev() {
+    if (!prevLesson) return;
+    navigate(`/lesson/${prevLesson._id}`);
+  }
+  function goNext() {
+    if (!nextLesson) return;
+    navigate(`/lesson/${nextLesson._id}`);
+  }
+
   if (loading) return <div>Loading lesson...</div>;
   if (!doc)
     return (
@@ -67,74 +193,64 @@ export default function LessonPage() {
       </div>
     );
 
-  const youTubeMatch = (doc.url || "").match(
-    /(?:v=|\/embed\/|youtu\.be\/)([A-Za-z0-9_-]{6,})/
-  );
-  const title = doc.title || doc.metadata?.ogTitle || doc.url;
-  const sections = doc.metadata?.sections || [];
+  // sanitized html to render (anchors forced to open new tab)
+  const enhancedHtml = sanitizeAndEnhanceHtml(doc.contentHtml);
 
-  async function copyUrl(): Promise<boolean> {
-    const url = `${window.location.origin}/lesson/${id}`;
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-        showToast("Link copied to clipboard", "success");
-        return true;
-      } else {
-        const ta = document.createElement("textarea");
-        ta.value = url;
-        ta.setAttribute("readonly", "");
-        ta.style.position = "absolute";
-        ta.style.left = "-9999px";
-        document.body.appendChild(ta);
-        ta.select();
-        const ok = document.execCommand("copy");
-        ta.remove();
-        if (ok) {
-          showToast("Link copied to clipboard", "success");
-          return true;
-        } else {
-          showToast("Copy not supported", "error");
-          return false;
-        }
-      }
-    } catch (err) {
-      console.error("copy failed", err);
-      showToast("Copy failed", "error");
-      return false;
-    }
-  }
+  // video links found in the doc
+  const videoLinks = extractVideoLinksFromDoc(doc);
 
-  async function onShare() {
-    const url = `${window.location.origin}/lesson/${id}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: title || "Lesson",
-          text: `Check out this lesson: ${title}`,
-          url,
-        });
-        showToast("Shared successfully", "success");
-      } else {
-        const ok = await copyUrl();
-        if (ok) {
-          showToast("Sharing not supported — link copied", "info");
-        } else {
-          showToast("Sharing not supported and copy failed", "error");
-        }
-      }
-    } catch (err) {
-      console.error("share failed", err);
-      showToast("Share failed", "error");
-    }
-  }
+  // friendly youTube embed detection (prefers first found)
+  const youTubeMatch =
+    (doc.url || "").match(/(?:v=|\/embed\/|youtu\.be\/)([A-Za-z0-9_-]{6,})/) ||
+    (videoLinks[0] || "").match(
+      /(?:v=|\/embed\/|youtu\.be\/)([A-Za-z0-9_-]{6,})/
+    );
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-4">
+        {/* small breadcrumb + prev/next */}
+        <div className="flex items-center gap-3 text-sm">
+          <button
+            onClick={() => navigate(-1)}
+            className="btn-surface px-2 py-1"
+          >
+            ← Back
+          </button>
+
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={goPrev}
+              disabled={!prevLesson}
+              className="btn-surface px-2 py-1"
+            >
+              {prevLesson
+                ? `Prev: ${String(prevLesson.title || prevLesson.url).slice(
+                    0,
+                    30
+                  )}`
+                : "Prev"}
+            </button>
+            <button
+              onClick={goNext}
+              disabled={!nextLesson}
+              className="btn-surface px-2 py-1"
+            >
+              {nextLesson
+                ? `Next: ${String(nextLesson.title || nextLesson.url).slice(
+                    0,
+                    30
+                  )}`
+                : "Next"}
+            </button>
+          </div>
+        </div>
+
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-classroom">{title}</h2>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-2xl font-bold text-classroom truncate">
+              {doc.title || doc.metadata?.ogTitle || doc.url}
+            </h2>
             <div className="text-sm text-classroom-muted">
               {doc.type} • Fetched: {new Date(doc.fetchedAt).toLocaleString()}
             </div>
@@ -158,17 +274,74 @@ export default function LessonPage() {
               Original
             </a>
 
-            <button onClick={copyUrl} className="btn-surface text-sm">
+            <button
+              onClick={async () => {
+                const ok = await (async () => {
+                  const url = `${window.location.origin}/lesson/${doc._id}`;
+                  try {
+                    if (navigator.clipboard?.writeText) {
+                      await navigator.clipboard.writeText(url);
+                      return true;
+                    }
+                    // fallback
+                    const ta = document.createElement("textarea");
+                    ta.value = url;
+                    ta.setAttribute("readonly", "");
+                    ta.style.position = "absolute";
+                    ta.style.left = "-9999px";
+                    document.body.appendChild(ta);
+                    ta.select();
+                    const ok = document.execCommand("copy");
+                    ta.remove();
+                    return ok;
+                  } catch {
+                    return false;
+                  }
+                })();
+                if (ok) showToast("Link copied to clipboard", "success");
+                else showToast("Copy failed", "error");
+              }}
+              className="btn-surface text-sm"
+            >
               Copy URL
             </button>
 
-            <button onClick={onShare} className="btn-surface text-sm">
+            <button
+              onClick={async () => {
+                const url = `${window.location.origin}/lesson/${doc._id}`;
+                try {
+                  if (navigator.share) {
+                    await navigator.share({
+                      title: doc.title || "Lesson",
+                      text: `Check out this lesson: ${doc.title}`,
+                      url,
+                    });
+                    showToast("Shared successfully", "success");
+                  } else {
+                    // fallback to copy
+                    const ok = await navigator.clipboard
+                      ?.writeText?.(url)
+                      .then(() => true)
+                      .catch(() => false);
+                    if (ok)
+                      showToast("Sharing not supported — link copied", "info");
+                    else
+                      showToast("Share not supported and copy failed", "error");
+                  }
+                } catch (err) {
+                  console.error("share failed", err);
+                  showToast("Share failed", "error");
+                }
+              }}
+              className="btn-surface text-sm"
+            >
               Share
             </button>
           </div>
         </div>
 
-        {youTubeMatch && (
+        {/* embedded video (if available) */}
+        {youTubeMatch ? (
           <div className="w-full aspect-video bg-black rounded overflow-hidden">
             <iframe
               className="w-full h-full"
@@ -178,29 +351,29 @@ export default function LessonPage() {
               allowFullScreen
             />
           </div>
-        )}
+        ) : null}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
-            <section className="card-surface border border-surface-border p-4 rounded shadow-sm">
-              <h3 className="font-semibold mb-3 text-classroom">
+            <section className="card-surface border border-surface-border p-3 rounded shadow-sm">
+              <h3 className="font-semibold mb-2 text-classroom">
                 Lesson content
               </h3>
 
               {doc.contentHtml ? (
                 <div
                   className="prose dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: doc.contentHtml }}
+                  dangerouslySetInnerHTML={{ __html: enhancedHtml }}
                 />
               ) : (
-                <div className="card-surface p-4 rounded border border-surface-border">
+                <div className="card-surface p-3 rounded border border-surface-border">
                   <PrettyContent text={doc.text || "(no text)"} />
                 </div>
               )}
             </section>
 
             {rewritten && (
-              <section className="bg-success-surface border border-surface-border p-4 rounded">
+              <section className="bg-success-surface border border-surface-border p-3 rounded">
                 <h3 className="font-semibold mb-2 text-success">
                   Rewrite (OpenAI)
                 </h3>
@@ -211,15 +384,16 @@ export default function LessonPage() {
             )}
           </div>
 
-          <aside className="card-surface border border-surface-border p-4 rounded sticky top-24 max-h-[60vh] overflow-auto">
+          <aside className="card-surface border border-surface-border p-3 rounded sticky top-20 max-h-[60vh] overflow-auto">
             <h4 className="font-semibold text-classroom">Sections</h4>
             <div className="mt-3 space-y-2">
-              {sections.length === 0 && (
+              {(doc?.metadata?.sections?.length ?? 0) === 0 && (
                 <div className="text-sm text-classroom-muted">
                   No sections available.
                 </div>
               )}
-              {sections.map((s: any, idx: number) => (
+
+              {(doc?.metadata?.sections ?? []).map((s: any, idx: number) => (
                 <div key={idx} className="p-2 bg-classroom-surface-2 rounded">
                   <div className="font-medium text-classroom">
                     {s.heading || `Part ${idx + 1}`}
@@ -231,6 +405,28 @@ export default function LessonPage() {
                 </div>
               ))}
             </div>
+
+            {/* Video links list */}
+            {videoLinks.length > 0 && (
+              <>
+                <hr className="my-3 border-surface-border" />
+                <h5 className="font-semibold text-classroom">Video links</h5>
+                <ul className="mt-2 space-y-2">
+                  {videoLinks.map((v, i) => (
+                    <li key={i} className="text-sm">
+                      <a
+                        href={v}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-classroom underline"
+                      >
+                        {v}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </aside>
         </div>
 
