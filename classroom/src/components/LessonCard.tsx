@@ -12,18 +12,22 @@ export default function LessonCard({
   if (loading) {
     return (
       <article
-        aria-hidden
-        className="animate-pulse card-surface p-4 rounded-lg border shadow-sm border-surface-border"
+        className="card-surface border border-surface-border p-4 rounded-lg animate-pulse"
+        role="status"
+        aria-busy="true"
       >
-        <div className="flex items-center justify-between gap-4 mb-3">
+        <div className="flex items-center justify-between gap-4">
           <div className="flex-1">
-            <div className="h-5 bg-surface-shimmer rounded w-3/4 mb-2" />
-            <div className="h-3 bg-surface-shimmer rounded w-1/2" />
+            <div className="h-4 rounded-md bg-surface-shimmer w-3/4 mb-3" />
+            <div className="h-3 rounded-md bg-surface-shimmer w-1/2" />
           </div>
-          <div className="w-14 h-8 bg-surface-shimmer rounded" />
+          <div className="w-12 h-8 rounded-md bg-surface-shimmer" />
         </div>
-        <div className="h-3 bg-surface-shimmer rounded w-full mb-2" />
-        <div className="h-3 bg-surface-shimmer rounded w-5/6" />
+
+        <div className="mt-4">
+          <div className="h-3 rounded-md bg-surface-shimmer w-full mb-2" />
+          <div className="h-3 rounded-md bg-surface-shimmer w-5/6" />
+        </div>
       </article>
     );
   }
@@ -36,12 +40,12 @@ export default function LessonCard({
     : "Unknown";
 
   return (
-    <article className="card-surface p-4 rounded-lg border border-surface-border shadow-sm">
-      <div className="flex items-start justify-between gap-4">
+    <article className="card-surface border border-surface-border p-4 rounded-lg shadow-sm">
+      <div className="flex items-start justify-between">
         <div className="min-w-0">
           <Link
             to={`/lesson/${lesson._id}`}
-            className="text-lg font-medium text-classroom truncate hover:underline block"
+            className="text-lg font-medium text-classroom hover:underline block truncate"
             title={String(title)}
           >
             {title}
@@ -56,7 +60,7 @@ export default function LessonCard({
             href={lesson.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-block px-2 py-1 rounded btn-surface text-xs"
+            className="btn-surface text-xs px-2 py-1"
           >
             Open
           </a>

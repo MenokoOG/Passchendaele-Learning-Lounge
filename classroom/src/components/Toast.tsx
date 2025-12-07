@@ -23,7 +23,6 @@ export default function Toast({
 
   if (!visible) return null;
 
-  // prefer CSS variables from index.css; fallback to color classes
   const typeClass =
     type === "success"
       ? "toast-success"
@@ -32,13 +31,22 @@ export default function Toast({
       : "toast-info";
 
   return (
-    <div role="status" aria-live="polite" className={`toast-root ${typeClass}`}>
+    <div
+      role="status"
+      aria-live="polite"
+      className={`toast-root ${typeClass}`}
+      onClick={() => onClose?.()}
+    >
       <div className="toast-content">
         <div className="toast-message">{message}</div>
         <button
-          onClick={() => onClose?.()}
-          aria-label="Close toast"
           className="toast-close"
+          aria-label="Close"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose?.();
+          }}
+          title="Close"
         >
           ✕
         </button>

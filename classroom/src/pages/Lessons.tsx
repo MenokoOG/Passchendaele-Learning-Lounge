@@ -2,6 +2,15 @@
 import React, { useEffect, useState } from "react";
 import { listRaw } from "../api";
 import LessonCard from "../components/LessonCard";
+import SkeletonCard from "../components/SkeletonCard";
+
+function isVideoLesson(l: any) {
+  if (!l) return false;
+  if (String(l.type).toLowerCase() === "youtube") return true;
+  if (l.metadata?.ogType === "video") return true;
+  if (l.url && /(?:youtube\.com|youtu\.be)/i.test(l.url)) return true;
+  return false;
+}
 
 export default function Lessons() {
   const [lessons, setLessons] = useState<any[]>([]);
@@ -11,15 +20,15 @@ export default function Lessons() {
     setLoading(true);
     try {
       const data = await listRaw();
-
-      // Sort ascending: oldest first (change to descending for newest-first)
-      const sorted = (data || []).sort((a: any, b: any) => {
+      // exclude videos from the lesson list
+      const onlyPages = (data || []).filter((d: any) => !isVideoLesson(d));
+      // sort ascending (oldest -> newest)
+      onlyPages.sort((a: any, b: any) => {
         const ta = a?.fetchedAt ? new Date(a.fetchedAt).valueOf() : 0;
         const tb = b?.fetchedAt ? new Date(b.fetchedAt).valueOf() : 0;
         return ta - tb;
       });
-
-      setLessons(sorted);
+      setLessons(onlyPages);
     } catch (err) {
       console.error(err);
     } finally {
@@ -38,7 +47,7 @@ export default function Lessons() {
         {loading && (
           <div className="space-y-4">
             {Array.from({ length: 6 }).map((_, i) => (
-              <LessonCard key={i} loading />
+              <SkeletonCard key={i} />
             ))}
           </div>
         )}
@@ -49,7 +58,7 @@ export default function Lessons() {
               <LessonCard key={l._id} lesson={l} />
             ))}
             {lessons.length === 0 && !loading && (
-              <div className="text-slate-300">
+              <div className="text-classroom-muted">
                 No lessons found — try running the scraper.
               </div>
             )}
@@ -57,12 +66,12 @@ export default function Lessons() {
         )}
       </div>
 
-      <aside className="bg-slate-800 p-4 rounded">
+      <aside className="card-surface border border-surface-border p-4 rounded">
         <h3 className="font-semibold mb-2">Quick Actions</h3>
-        <p className="mb-3 text-sm text-slate-300">
+        <p className="mb-3 text-sm text-classroom-muted">
           If you haven't scraped yet, use your server or run the scraper script.
         </p>
-        <div className="text-sm text-slate-300">
+        <div className="text-sm text-classroom-muted">
           API:{" "}
           <code className="text-xs">
             {import.meta.env.VITE_API_URL || "http://localhost:4000"}

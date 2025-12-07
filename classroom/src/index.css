@@ -12,9 +12,12 @@
   --classroom-primary: #0ea5a4; /* teal-500 */
   --classroom-primary-600: #0b9a94;
 
-  /* replaced amber with softer periwinkle/indigo */
-  --classroom-strip: #7c9cf5; /* soft periwinkle */
-  --classroom-strip-600: #5c7be6; /* slightly deeper indigo */
+  /* soft periwinkle/indigo for strip */
+  --classroom-strip: #7c9cf5;
+  --classroom-strip-600: #5c7be6;
+
+  /* small logo circle background */
+  --classroom-logo: #0ea5a4;
 
   /* surfaces */
   --surface-bg: #ffffff;
@@ -41,12 +44,13 @@
 
 /* dark mode overrides when root has .dark (Tailwind convention) */
 :root.dark {
-  --classroom-primary: #4fd1c5; /* slightly brighter teal for dark */
+  --classroom-primary: #4fd1c5;
   --classroom-primary-600: #2bb6aa;
 
-  /* dark-mode friendly periwinkle/indigo */
   --classroom-strip: #9db0ff;
   --classroom-strip-600: #7a94f0;
+
+  --classroom-logo: #4fd1c5;
 
   --surface-bg: #0b1220;
   --surface-contrast: #071025;
@@ -70,24 +74,28 @@
    Theme-aware utility classes
    -------------------------- */
 
-/* Card surface — use for lesson cards, panels, etc. */
+/* Card surface — use for lesson cards, panels, etc.
+   Use !important on background so stray utility classes (bg-*) don't override */
 .card-surface {
-  background: var(--surface-bg);
+  background: var(--surface-bg) !important;
   color: var(--text-default);
   border-radius: 0.5rem;
+  transition: background-color 160ms ease, color 160ms ease,
+    border-color 160ms ease;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Surface border helper */
 .border-surface-border {
-  border-color: var(--surface-border);
+  border-color: var(--surface-border) !important;
 }
 
 /* text helpers */
 .text-classroom {
-  color: var(--classroom-primary);
+  color: var(--classroom-primary) !important;
 }
 .text-classroom-muted {
-  color: var(--text-muted);
+  color: var(--text-muted) !important;
 }
 
 /* button styles */
@@ -134,7 +142,7 @@
 
 /* success surface block (e.g. rewrite result box) */
 .bg-success-surface {
-  background: var(--success-surface);
+  background: var(--success-surface) !important;
   color: var(--text-default);
 }
 
@@ -144,7 +152,7 @@
     180deg,
     var(--surface-contrast),
     var(--surface-bg)
-  );
+  ) !important;
 }
 
 /* shimmer used as skeleton background */
@@ -155,12 +163,7 @@
     #e6eef8,
     var(--shimmer-light)
   );
-  opacity: 0.9;
-}
-
-/* border shortcut to use in components */
-.border-surface-border {
-  border-color: var(--surface-border);
+  opacity: 0.95;
 }
 
 /* branding strip (soft bar near header) - uses primary + strip for a calm gradient */
@@ -173,9 +176,14 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.03);
 }
 
+/* small classroom color utility for logo box */
+.bg-classroom {
+  background: var(--classroom-logo) !important;
+}
+
 /* text color utilities fallback */
 .text-success {
-  color: var(--success);
+  color: var(--success) !important;
 }
 
 /* --------------------------

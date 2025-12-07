@@ -1,4 +1,3 @@
-// src/hooks/useTheme.ts
 import { useCallback, useEffect, useState } from "react";
 
 export type Theme = "light" | "dark" | "system";
