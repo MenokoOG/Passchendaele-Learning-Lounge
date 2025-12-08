@@ -1,6 +1,6 @@
 // src/pages/Lessons.tsx
 import React, { useEffect, useState } from "react";
-import { listRaw } from "../api";
+import { listRaw } from "../api/api";
 import LessonCard from "../components/LessonCard";
 import SkeletonCard from "../components/SkeletonCard";
 

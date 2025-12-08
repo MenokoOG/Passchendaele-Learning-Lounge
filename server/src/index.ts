@@ -1,25 +1,32 @@
+// server/src/index.ts
 import express from "express";
 import mongoose from "mongoose";
 import morgan from "morgan";
 import cors from "cors";
 import { MONGO_URI, PORT } from "./config.js";
-import scrapeRouter from "./routes/scrape.js";
-import rawRouter from "./routes/raw.js";
-import ingestRouter from "./routes/ingest.js";
+import authRouter from "./routes/auth.js";
+import usersRouter from "./routes/users.js";
+import rawRouter from "./routes/raw.js"; // keep your existing raw routes if present
+import scrapeRouter from "./routes/scrape.js"; // keep existing
+import ingestRouter from "./routes/ingest.js"; // keep existing
 
 async function main() {
   if (!MONGO_URI) {
-    console.error("");
+    console.error("MONGO_URI not set; set in .env");
     process.exit(1);
   }
-
-  await mongoose.connect(MONGO_URI);
-
+  await mongoose.connect(MONGO_URI, {});
   const app = express();
+
   app.use(morgan("dev"));
   app.use(cors());
-  app.use(express.json({ limit: "10mb" }));
+  app.use(express.json({ limit: "20mb" }));
 
+  // auth + user management
+  app.use("/api/auth", authRouter);
+  app.use("/api/users", usersRouter);
+
+  // keep existing scrapers/raw endpoints
   app.use("/api/scrape", scrapeRouter);
   app.use("/api/raw", rawRouter);
   app.use("/api/ingest", ingestRouter);

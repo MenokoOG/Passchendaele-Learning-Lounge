@@ -1,7 +1,7 @@
 // src/pages/Videos.tsx
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { listRaw } from "../api";
+import { listRaw } from "../api/api";
 import VideoCard from "../components/VideoCard";
 import SkeletonCard from "../components/SkeletonCard";
 
