@@ -12,12 +12,18 @@ export interface User {
   email?: string;
 }
 
+// add register to the interface
 interface AuthContextValue {
   user: User | null;
   token: string | null;
   loading: boolean;
   login: (
     username: string,
+    password: string
+  ) => Promise<{ ok: boolean; error?: string }>;
+  register: (
+    username: string,
+    email: string,
     password: string
   ) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
@@ -101,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     token,
     loading,
     login,
+    register,
     logout,
     setUser,
   };
@@ -108,8 +115,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+async function register(username: string, email: string, password: string) {
+  try {
+    // adapt to your backend API signature; example POST /api/auth/register
+    const data = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, email, password }),
+    }).then((r) => r.json());
+
+    if (!data?.token) {
+      return { ok: false, error: "Invalid server response" };
+    }
+
+    // reuse setAuth/setToken/setUser behavior from login
+    setAuth(data.token, data.user);
+    setToken(data.token);
+    setUser(
+      data.user && typeof data.user.username === "string"
+        ? {
+            _id: data.user._id,
+            username: data.user.username,
+            role: data.user.role ?? "",
+            email: data.user.email,
+          }
+        : null
+    );
+    return { ok: true };
+  } catch (err: any) {
+    const msg = err?.response?.data?.error ?? err?.message ?? "Register failed";
+    return { ok: false, error: String(msg) };
+  }
+}
+
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
   return ctx;
+}
+function setToken(token: any) {
+  throw new Error("Function not implemented.");
+}
+
+function setUser(
+  arg0: { _id: any; username: any; role: any; email: any } | null
+) {
+  throw new Error("Function not implemented.");
 }
