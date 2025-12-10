@@ -62,4 +62,37 @@ router.delete("/:id", requireAuth, requireRole("admin"), async (req, res) => {
   return res.json({ ok: true });
 });
 
+/**
+ * PUT /api/users/me
+ * Body: { username?, email?, password?, preferences? }
+ * Updates the authenticated user's profile; returns updated user (without passwordHash).
+ */
+router.put("/me", requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).user?.id || (req as any).user?._id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { username, email, password, preferences } = req.body ?? {};
+    const data: any = {};
+    if (typeof username === "string") data.username = username;
+    if (typeof email === "string") data.email = email;
+    if (typeof preferences === "object") data.preferences = preferences;
+
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      data.passwordHash = await bcrypt.hash(String(password), salt);
+    }
+
+    const updated = await User.findByIdAndUpdate(userId, data, {
+      new: true,
+    }).select("-passwordHash");
+
+    if (!updated) return res.status(404).json({ error: "Not found" });
+    return res.json(updated);
+  } catch (err: any) {
+    console.error("users.me.update error:", err);
+    return res.status(500).json({ error: "Update failed" });
+  }
+});
+
 export default router;

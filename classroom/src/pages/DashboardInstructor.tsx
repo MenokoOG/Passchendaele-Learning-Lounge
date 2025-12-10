@@ -1,6 +1,7 @@
 // src/pages/DashboardInstructor.tsx
 import React from "react";
 import { Link } from "react-router-dom";
+import NotesWidget from "../components/NotesWidget";
 
 export default function DashboardInstructor() {
   return (
@@ -26,9 +27,27 @@ export default function DashboardInstructor() {
           <p className="text-sm text-classroom-muted">
             Manage classroom sprints and tasks.
           </p>
-          <Link to="/kanban" className="btn-surface mt-3 inline-block">
+          <Link
+            to="/dashboard/kanban"
+            className="btn-surface mt-3 inline-block"
+          >
             Kanban
           </Link>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <NotesWidget />
+        </div>
+
+        <div>
+          <div className="card-surface border border-surface-border p-4 rounded">
+            <h3 className="font-semibold">Instructor quick links</h3>
+            <p className="text-sm text-classroom-muted">
+              Student progress & creation tools.
+            </p>
+          </div>
         </div>
       </div>
     </div>

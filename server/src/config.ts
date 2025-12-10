@@ -1,4 +1,3 @@
-// server/src/config.ts
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -15,15 +14,13 @@ export const ADMIN_SECRET =
 export const SCRAPER_KEY =
   process.env.SCRAPER_KEY ?? "replace_scraper_key_for_automated_scrapers";
 
-// Basic checks
+// Basic checks: warn clearly to help local dev
 if (!MONGO_URI) {
-  console.error("MONGO_URI is not set in environment.");
-  // don't exit here; app might be tested with local mongodb; but warn
+  console.warn("MONGO_URI is not set in environment. Some features will fail.");
 }
 if (!JWT_SECRET || JWT_SECRET.length < 16) {
   console.error(
     "JWT_SECRET is missing or too short. Set process.env.JWT_SECRET (recommend 32+ chars)."
   );
-  // Throw so developer notices during local dev
   throw new Error("Missing or too-short JWT_SECRET environment variable.");
 }

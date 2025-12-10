@@ -23,7 +23,7 @@ async function main() {
   );
 
   console.log("Fetching", urlArg);
-  const res = await fetchAndExtract(urlArg);
+  const res = await fetchAndExtract(urlArg, { usePuppeteer: true });
   const lesson = {
     title: res.title || urlArg,
     url: urlArg,

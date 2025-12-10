@@ -42,6 +42,43 @@
   --shimmer-dark: #1f2937;
 }
 
+/* Theme vars - M3n0koOg Learning Lounge tokens */
+:root {
+  --bg: #f8fafc;
+  --panel-bg: #ffffff;
+  --muted: #6b7280;
+  --text: #0b1220;
+  --code-bg: #f1f5f9;
+  --code-text: #0b1220;
+  --accent: #ff8c00; /* lounge accent */
+  --border: rgba(11, 17, 32, 0.06);
+}
+
+:root.dark,
+html.dark {
+  --bg: #0b1220;
+  --panel-bg: #0f1724;
+  --muted: #94a3b8;
+  --text: #e6eef8;
+  --code-bg: #071023;
+  --code-text: #e6eef8;
+  --accent: #ff8c00;
+  --border: rgba(255, 255, 255, 0.06);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* focus style */
+.a11y-focus:focus,
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
 /* dark mode overrides when root has .dark (Tailwind convention) */
 :root.dark {
   --classroom-primary: #4fd1c5;

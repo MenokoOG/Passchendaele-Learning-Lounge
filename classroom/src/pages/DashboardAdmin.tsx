@@ -16,26 +16,38 @@ export default function DashboardAdmin() {
           <p className="text-sm text-classroom-muted">
             Manage users and roles.
           </p>
-          <Link to="/admin/users" className="btn-surface mt-3 inline-block">
+          <Link
+            to="/dashboard/admin/users"
+            className="btn-surface mt-3 inline-block"
+          >
             Manage users
           </Link>
         </div>
 
         <div className="card-surface border border-surface-border p-4 rounded">
-          <h3 className="font-semibold">Content / Scraper</h3>
+          <h3 className="font-semibold">Ingest / Dashboard</h3>
           <p className="text-sm text-classroom-muted">
-            Links to scraper frontend and ingestion tools.
+            Inspect ingestion widgets, re-run jobs, and view ingest stats.
           </p>
-          <a href="/" className="btn-surface mt-3 inline-block">
-            Open scraper client
-          </a>
+          <Link
+            to="/dashboard/admin/ingest"
+            className="btn-surface mt-3 inline-block"
+          >
+            Ingest dashboard
+          </Link>
         </div>
 
         <div className="card-surface border border-surface-border p-4 rounded">
           <h3 className="font-semibold">System</h3>
           <p className="text-sm text-classroom-muted">
-            Logs, backups, and settings.
+            Logs, backups, and system actions.
           </p>
+          <Link
+            to="/dashboard/admin/system"
+            className="btn-surface mt-3 inline-block"
+          >
+            System status
+          </Link>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 // src/pages/DashboardStudent.tsx
 import React from "react";
 import { Link } from "react-router-dom";
+import NotesWidget from "../components/NotesWidget";
 
 export default function DashboardStudent() {
   return (
@@ -28,6 +29,10 @@ export default function DashboardStudent() {
             Notes
           </Link>
         </div>
+      </div>
+
+      <div className="mt-4">
+        <NotesWidget />
       </div>
     </div>
   );

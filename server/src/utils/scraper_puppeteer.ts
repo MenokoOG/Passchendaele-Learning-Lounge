@@ -40,8 +40,8 @@ async function getBrowser() {
  */
 export default async function fetchAndExtract(
   url: string,
-  options: { waitUntil?: string } = {}
-) {
+  options: { waitUntil?: string; usePuppeteer?: boolean }
+): Promise<any> {
   const browser = await getBrowser();
   const page = await browser.newPage();
 

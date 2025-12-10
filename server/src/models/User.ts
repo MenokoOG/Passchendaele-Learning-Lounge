@@ -8,6 +8,7 @@ export interface IUser extends Document {
   email: string;
   passwordHash: string;
   role: Role;
+  preferences?: any;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,11 +31,14 @@ const UserSchema = new mongoose.Schema<IUser>(
       enum: ["admin", "instructor", "student"],
       default: "student",
     },
+    // preferences stored as a flexible object (font size, theme, reducedMotion, etc.)
+    preferences: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   { timestamps: true }
 );
 
-// Export model
 export const User =
   (mongoose.models.User as mongoose.Model<IUser>) ||
   mongoose.model<IUser>("User", UserSchema);
+
+export default User;

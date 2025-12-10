@@ -3,6 +3,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import { User } from "../models/User.js";
 import { createTokenForUser } from "../utils/auth.js";
+import { requireAuth } from "../middleware/auth.js"; // make sure this exists and sets req.user
 
 const router = express.Router();
 
@@ -59,14 +60,7 @@ router.post("/login", async (req, res) => {
   try {
     const { email, username, emailOrUsername, password } = req.body || {};
 
-    // Quick validation
     if (!password || (!email && !username && !emailOrUsername)) {
-      console.warn("login attempt missing fields:", {
-        email,
-        username,
-        emailOrUsername,
-        passwordPresent: !!password,
-      });
       return res
         .status(400)
         .json({ error: "Provide email/username and password" });
@@ -75,23 +69,15 @@ router.post("/login", async (req, res) => {
     const lookup = (email || username || emailOrUsername)
       .toString()
       .toLowerCase();
-    console.log("login lookup:", lookup);
 
     const user = await User.findOne({
       $or: [{ email: lookup }, { username: lookup }],
     }).lean();
     if (!user) {
-      console.warn("login failed - user not found for lookup:", lookup);
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // ensure passwordHash is present
     if (!user.passwordHash) {
-      console.error("login failed - user has no passwordHash:", {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-      });
       return res
         .status(500)
         .json({ error: "Account not configured for password login" });
@@ -102,32 +88,80 @@ router.post("/login", async (req, res) => {
       String(user.passwordHash)
     );
     if (!ok) {
-      console.warn(
-        "login failed - bad password for user:",
-        user.username ?? user.email
-      );
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // successful login -> create token (user is plain object from .lean())
     const token = createTokenForUser({
       _id: (user as any)._id,
       username: (user as any).username,
       role: (user as any).role,
     });
+
     return res.json({
       ok: true,
       token,
       user: {
-        id: (user as any)._id,
+        _id: (user as any)._id,
         username: (user as any).username,
         email: (user as any).email,
         role: (user as any).role,
+        preferences: (user as any).preferences ?? {},
       },
     });
   } catch (err: any) {
     console.error("login error:", err);
     return res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * GET /api/auth/me
+ * Returns the authenticated user's public info (no passwordHash)
+ */
+router.get("/me", requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).user?.id || (req as any).user?._id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const u = await User.findById(userId).select("-passwordHash").lean();
+    if (!u) return res.status(404).json({ error: "Not found" });
+
+    return res.json({ user: u });
+  } catch (err) {
+    console.error("auth.me error:", err);
+    return res.status(500).json({ error: "Failed to fetch user" });
+  }
+});
+
+/**
+ * PUT /api/auth/profile
+ * Update current user's profile (convenience for client).
+ * Accepts partial user fields (username, email, preferences, password)
+ */
+router.put("/profile", requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).user?.id || (req as any).user?._id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { username, email, password, preferences } = req.body ?? {};
+    const data: any = {};
+    if (typeof username === "string") data.username = username;
+    if (typeof email === "string") data.email = email;
+    if (typeof preferences === "object") data.preferences = preferences;
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      data.passwordHash = await bcrypt.hash(String(password), salt);
+    }
+
+    const updated = await User.findByIdAndUpdate(userId, data, { new: true })
+      .select("-passwordHash")
+      .lean();
+    if (!updated) return res.status(404).json({ error: "Not found" });
+
+    return res.json({ ok: true, user: updated });
+  } catch (err) {
+    console.error("auth.profile.update error:", err);
+    return res.status(500).json({ error: "Update failed" });
   }
 });
 
