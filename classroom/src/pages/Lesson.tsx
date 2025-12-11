@@ -1,4 +1,3 @@
-// src/pages/Lesson.tsx
 import React, {
   useCallback,
   useEffect,
@@ -10,6 +9,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { getRaw, rewriteRaw, listRaw } from "../api/api";
 import Toast from "../components/Toast";
 import PrettyContent from "../components/PrettyContent";
+import { useAuth } from "../auth/AuthProvider";
 
 /* ---------- helpers (sanitization + video extraction) ---------- */
 
@@ -89,6 +89,10 @@ export default function LessonPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  const { user } = useAuth();
+  const canRewrite =
+    user && (user.role === "instructor" || user.role === "admin");
+
   // --- state hooks (declare all up front) ---
   const [doc, setDoc] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
@@ -107,31 +111,22 @@ export default function LessonPage() {
   const speakingRef = useRef(false);
 
   // --- TTS helpers (stable callbacks) ---
-  // inside your component (LessonPage / Lesson.tsx)
-
   const stopTTS = React.useCallback(() => {
-    // stop any speaking, cleanup synth, timers, etc.
     try {
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
-      // clear any interval/timeouts you created
     } catch (err) {
       console.warn("stopTTS error", err);
     }
   }, []);
 
-  // Example: effect that registers something and cleans up by calling stopTTS
   React.useEffect(() => {
-    // start something (TTS, audio, etc.)
-    // DO NOT redeclare stopTTS here — use the stable callback defined above.
     return () => {
-      // cleanup on unmount
       stopTTS();
     };
-  }, [stopTTS]); // include stopTTS to make effect stable
+  }, [stopTTS]);
 
-  // IMPORTANT: always declare hooks (useState/useRef/useCallback/useEffect...) in the same order and unconditionally.
   const startTTS = useCallback(
     (text: string, opts?: { lang?: string; rate?: number; pitch?: number }) => {
       try {
@@ -172,7 +167,6 @@ export default function LessonPage() {
   // --- Effects: cleanup and data loading (always after callbacks/declarations) ---
   useEffect(() => {
     return () => {
-      // ensure TTS stopped on unmount
       try {
         stopTTS();
       } catch {}
@@ -219,6 +213,10 @@ export default function LessonPage() {
 
   async function onRewrite() {
     if (!id) return;
+    if (!canRewrite) {
+      showToast("Permission denied: rewrite requires instructor role", "error");
+      return;
+    }
     setRewriting(true);
     try {
       const res = await rewriteRaw(id);
@@ -347,13 +345,15 @@ export default function LessonPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={onRewrite}
-              disabled={rewriting}
-              className="btn-classroom text-sm"
-            >
-              {rewriting ? "Rewriting…" : "Rewrite (OpenAI)"}
-            </button>
+            {canRewrite && (
+              <button
+                onClick={onRewrite}
+                disabled={rewriting}
+                className="btn-classroom text-sm"
+              >
+                {rewriting ? "Rewriting…" : "Rewrite (OpenAI)"}
+              </button>
+            )}
 
             <a
               href={doc.url}
