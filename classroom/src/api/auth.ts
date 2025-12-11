@@ -21,14 +21,26 @@ export type LoginResponse = {
   user: User;
 };
 
+/**
+ * Login — accepts email or username depending on server implementation.
+ * Returns { token, user } on success.
+ */
 export async function loginApi(
-  username: string,
+  usernameOrEmail: string,
   password: string
 ): Promise<LoginResponse> {
-  const r = await client.post("/api/auth/login", { username, password });
+  const r = await client.post("/api/auth/login", {
+    email: usernameOrEmail,
+    username: usernameOrEmail,
+    emailOrUsername: usernameOrEmail,
+    password,
+  });
   return r.data as LoginResponse;
 }
 
+/**
+ * Fetch current authenticated user (server: GET /api/auth/me)
+ */
 export async function meApi(): Promise<{ user: User }> {
   const r = await client.get("/api/auth/me");
   if (r.data && r.data.user) return r.data as { user: User };
@@ -36,12 +48,14 @@ export async function meApi(): Promise<{ user: User }> {
 }
 
 /**
- * Update current user's profile (including preferences). Server route: PUT /api/users/me
- * Returns the updated user object (no passwordHash).
+ * Update current user's profile (client convenience).
+ * Server route in your code: PUT /api/auth/profile
+ * Returns updated user object.
  */
 export async function updateProfileApi(profile: Partial<User>): Promise<User> {
-  const r = await client.put("/api/users/me", profile);
-  return r.data as User;
+  const r = await client.put("/api/auth/profile", profile);
+  // server returns { ok: true, user } or just user — normalize
+  return (r.data && (r.data.user ?? r.data)) as User;
 }
 
 /**
@@ -50,7 +64,7 @@ export async function updateProfileApi(profile: Partial<User>): Promise<User> {
 export async function logoutApi(): Promise<void> {
   try {
     await client.post("/api/auth/logout");
-  } catch (err) {
+  } catch {
     // ignore
   }
 }

@@ -1,11 +1,11 @@
 // src/auth/AuthProvider.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { loginApi, meApi, updateProfileApi } from "../api/auth";
+import { apiRegister } from "../api"; // <-- use central client register
 import { getAuthToken, getAuthUser, setAuth, clearAuth } from "./tokenStorage";
 
 type Role = "admin" | "instructor" | "student" | string;
 
-// allow theme to be a free string coming from DB to avoid TS errors
 export type Prefs = {
   fontSize?: number;
   reducedMotion?: boolean;
@@ -27,7 +27,7 @@ interface AuthContextValue {
   token: string | null;
   loading: boolean;
   login: (
-    username: string,
+    usernameOrEmail: string,
     password: string
   ) => Promise<{ ok: boolean; error?: string }>;
   register: (
@@ -44,7 +44,7 @@ export const AuthContext = createContext<AuthContextValue | undefined>(
   undefined
 );
 
-/** Type guard: narrow arbitrary value to "light" | "dark" */
+/** Type guard for theme */
 function isTheme(value: unknown): value is "light" | "dark" {
   return value === "light" || value === "dark";
 }
@@ -63,7 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!mounted) return;
           const u = data.user;
           if (u && typeof u.username === "string") {
-            // use type guard to safely set theme
             const rawTheme = u?.preferences?.theme;
             setUser({
               _id: u._id,
@@ -95,14 +94,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [token, user]);
 
-  async function login(username: string, password: string) {
+  async function login(usernameOrEmail: string, password: string) {
     try {
-      const data = await loginApi(username, password);
+      const data = await loginApi(usernameOrEmail, password);
       if (!data?.token) return { ok: false, error: "Invalid server response" };
       setAuth(data.token, data.user);
       setToken(data.token);
 
-      // safely narrow theme
       const rawTheme = data.user?.preferences?.theme;
       setUser({
         _id: data.user._id,
@@ -123,21 +121,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function register(username: string, email: string, password: string) {
     try {
-      const data = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password }),
-      }).then((r) => r.json());
-      if (!data?.token) return { ok: false, error: "Invalid server response" };
-      setAuth(data.token, data.user);
-      setToken(data.token);
+      // use the centralized api client so baseURL / proxy / interceptors are honored
+      const r = await apiRegister(username, email, password);
+      // apiRegister returns r.data; server returns { token, user } — normalize
+      const token = r?.token ?? r?.data?.token;
+      const userObj = r?.user ?? r?.data?.user ?? r?.data ?? null;
+      if (!token) return { ok: false, error: "Invalid server response" };
+
+      setAuth(token, userObj);
+      setToken(token);
       setUser({
-        _id: data.user._id,
-        username: data.user.username,
-        role: data.user.role ?? "",
-        email: data.user.email,
-        preferences: data.user.preferences ?? {},
+        _id: userObj?._id,
+        username: userObj?.username,
+        role: userObj?.role ?? "",
+        email: userObj?.email,
+        preferences: userObj?.preferences ?? {},
       });
+
       return { ok: true };
     } catch (err: any) {
       const msg =
@@ -156,7 +156,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const updated = await updateProfileApi(profile);
       if (updated) {
-        // merge preferences safely and narrow theme
         const mergedPrefs = {
           ...(updated.preferences ?? user?.preferences ?? {}),
         };

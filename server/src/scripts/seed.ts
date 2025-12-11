@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 // server/seed.cjs
-// Full CommonJS seed script — run with: node server/seed.cjs
+// Full CommonJS seed script — run with: node server/scripts/seed.ts
 
 require("dotenv").config();
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-const MONGO =
-  process.env.MONGO_URI || "mongodb://localhost:27017/m3classroom_seed";
+const MONGO = process.env.MONGO_URI || "mongodb://localhost:27017/test";
 
 async function connect() {
   await mongoose.connect(MONGO, {});

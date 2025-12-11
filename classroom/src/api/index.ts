@@ -1,6 +1,10 @@
 // src/api/index.ts
-import axios from "axios";
+import axios, { AxiosRequestConfig } from "axios";
 
+/**
+ * Single API client used across the app.
+ * VITE_API_URL can be set in .env (Vite uses import.meta.env).
+ */
 const API = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(
   /\/$/,
   ""
@@ -11,13 +15,16 @@ const client = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// token key used by your AuthProvider/tokenStorage
+const TOKEN_KEY = "token";
+
 // attach token automatically if present in localStorage
-client.interceptors.request.use((cfg) => {
+client.interceptors.request.use((cfg: AxiosRequestConfig | any) => {
   try {
-    const token = localStorage.getItem("token");
-    if (token) {
+    const t = localStorage.getItem(TOKEN_KEY);
+    if (t) {
       cfg.headers = cfg.headers || {};
-      (cfg.headers as any).Authorization = `Bearer ${token}`;
+      (cfg.headers as any).Authorization = `Bearer ${t}`;
     }
   } catch (e) {
     // ignore
@@ -25,13 +32,34 @@ client.interceptors.request.use((cfg) => {
   return cfg;
 });
 
+// optional: handle 401 globally (client-side logout)
+client.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    const status = err?.response?.status;
+    if (status === 401) {
+      try {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem("user");
+      } catch {}
+    }
+    return Promise.reject(err);
+  }
+);
+
 export default client;
 
 /* ----------------- Auth ----------------- */
-export async function apiLogin(email: string, password: string) {
-  const r = await client.post("/api/auth/login", { email, password });
-  return r.data; // { user, token }
+export async function apiLogin(emailOrUsername: string, password: string) {
+  const r = await client.post("/api/auth/login", {
+    email: emailOrUsername,
+    username: emailOrUsername,
+    emailOrUsername,
+    password,
+  });
+  return r.data; // { ok, token, user } or { user, token } depending on server
 }
+
 export async function apiRegister(
   username: string,
   email: string,
@@ -44,10 +72,12 @@ export async function apiRegister(
   });
   return r.data;
 }
+
 export async function apiGetMe() {
   const r = await client.get("/api/auth/me");
   return r.data;
 }
+
 export async function apiChangePassword(
   oldPassword: string | undefined,
   newPassword: string
@@ -60,17 +90,16 @@ export async function apiChangePassword(
 }
 
 /* ----------------- Notes / Events / Files / Kanban ----------------- */
-// These hit the server stubs implemented on server side
 export async function apiListNotes() {
   const r = await client.get("/api/notes");
   return r.data;
 }
+
 export async function apiCreateNote(note: {
   title: string;
   body?: string;
   content?: string;
 }) {
-  // server returns { ok: true, note } or created object depending on server
   const r = await client.post("/api/notes", {
     title: note.title,
     content: note.body ?? note.content ?? "",
@@ -78,6 +107,28 @@ export async function apiCreateNote(note: {
   if (r.data?.note) return r.data.note;
   return r.data;
 }
+
+export async function apiUpdateNote(
+  id: string,
+  payload: { title?: string; body?: string }
+) {
+  const r = await client.put(`/api/notes/${id}`, {
+    title: payload.title,
+    content: payload.body,
+  });
+  if (r.data?.note) return r.data.note;
+  return r.data;
+}
+
+export async function apiDeleteNote(id: string) {
+  const r = await client.delete(`/api/notes/${id}`);
+  return r.data;
+}
+
+/**
+ * IMPORTANT: this is the function your Calendar.tsx expects.
+ * Make sure Calendar.tsx imports: `import { apiListEvents } from "../api";`
+ */
 export async function apiListEvents() {
   const r = await client.get("/api/events");
   return r.data;
@@ -107,24 +158,23 @@ export async function apiDeleteUser(id: string) {
   return r.data;
 }
 
-// Auth profile update (used by AuthProvider)
+/* Profile update used by AuthProvider */
 export async function updateProfileApi(profile: any) {
   const r = await client.put("/api/auth/profile", profile);
   return r.data.user ?? r.data;
 }
 
-// Misc admin system status (client)
+/* System admin helpers (optional) */
 export async function apiSystemStatus() {
   const r = await client.get("/api/admin/system/status");
   return r.data;
 }
-
 export async function apiSystemBackup() {
   const r = await client.post("/api/admin/system/backup");
   return r.data;
 }
 
-// Lessons
+/* Lessons & raw endpoints */
 export async function listLessons() {
   const r = await client.get("/api/lessons");
   return r.data;

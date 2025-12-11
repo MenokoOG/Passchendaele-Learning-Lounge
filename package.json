@@ -10,13 +10,18 @@
     "start:server": "pnpm --filter server run start",
     "start:client": "pnpm --filter client run dev",
     "start": "concurrently \"pnpm --filter server run dev\" \"pnpm --filter client run dev\"",
-    "build": "pnpm -w -r run build"
+    "build": "pnpm -w -r run build",
+    "seed": "node server/seed.cjs",
+    "seed:ts": "NODE_ENV=development ts-node server/src/scripts/seed_users.ts"
   },
   "devDependencies": {
     "concurrently": "^8.2.0",
     "pnpm": "^10.25.0"
   },
   "dependencies": {
-    "@mozilla/readability": "0.6.0"
+    "@mozilla/readability": "0.6.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.2.3",
+    "mongoose": "^9.0.1"
   }
 }

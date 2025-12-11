@@ -7,24 +7,31 @@ export default function ProtectedRoute({
   children,
   allowedRoles,
 }: {
-  children: React.ReactElement;
+  children: React.ReactNode;
   allowedRoles?: string[]; // if undefined => any authenticated user allowed
 }) {
   const { user, loading } = useAuth();
   const loc = useLocation();
 
-  // still resolving initial auth (e.g., /auth/me) — show nothing (or a spinner)
-  if (loading) return <div />;
+  if (loading) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="p-4 text-sm text-classroom-muted"
+      >
+        Loading…
+      </div>
+    );
+  }
 
   if (!user) {
-    // not logged in -> redirect to login, preserve intended route
     return <Navigate to="/login" state={{ from: loc }} replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // unauthorized for this route — send to top-level dashboard
+  if (allowedRoles && !allowedRoles.includes(String(user.role))) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  return children;
+  return <>{children}</>;
 }

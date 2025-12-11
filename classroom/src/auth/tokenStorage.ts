@@ -1,9 +1,8 @@
 // src/auth/tokenStorage.ts
-// Simple localStorage helpers used by AuthProvider
-
 const TOKEN_KEY = "token";
 const USER_KEY = "user";
 
+/** Get token (or null) */
 export function getAuthToken(): string | null {
   try {
     return localStorage.getItem(TOKEN_KEY);
@@ -12,6 +11,7 @@ export function getAuthToken(): string | null {
   }
 }
 
+/** Get parsed user or null */
 export function getAuthUser(): any | null {
   try {
     const s = localStorage.getItem(USER_KEY);
@@ -21,6 +21,7 @@ export function getAuthUser(): any | null {
   }
 }
 
+/** Save token + user (user can be object or null) */
 export function setAuth(token: string, user: any) {
   try {
     localStorage.setItem(TOKEN_KEY, token);
@@ -30,6 +31,7 @@ export function setAuth(token: string, user: any) {
   }
 }
 
+/** Clear client auth state */
 export function clearAuth() {
   try {
     localStorage.removeItem(TOKEN_KEY);

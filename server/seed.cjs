@@ -1,22 +1,43 @@
 #!/usr/bin/env node
 // server/seed.cjs
-// Run: node seed.cjs
-const dotenv = require("dotenv");
-dotenv.config();
+// Run: node server/seed.cjs
+// This script requires a valid MONGO_URI environment variable (no fallback to localhost).
 
+require("dotenv").config();
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-const MONGO =
-  process.env.MONGO_URI || "mongodb://localhost:27017/m3classroom_seed";
+const MONGO_URI = (process.env.MONGO_URI || "").trim();
+
+if (!MONGO_URI) {
+  console.error(
+    "ERROR: MONGO_URI not set. Set MONGO_URI in your environment or in a .env file and retry.\n" +
+      'Example .env: MONGO_URI="mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/mydb?retryWrites=true&w=majority"'
+  );
+  process.exit(1);
+}
+
+function maskUri(uri) {
+  try {
+    return uri.replace(/\/\/(.*?):(.*?)@/, "//<user>:<password>@");
+  } catch {
+    return uri;
+  }
+}
 
 async function connect() {
-  await mongoose.connect(MONGO, {});
-  console.log("Connected to", MONGO);
+  console.log("Connecting to MongoDB:", maskUri(MONGO_URI));
+  // use default options compatible with mongoose latest versions
+  await mongoose.connect(MONGO_URI, {
+    // serverSelectionTimeoutMS helps fail fast if Atlas is unreachable
+    serverSelectionTimeoutMS: 10000,
+  });
+  console.log("Connected to MongoDB.");
 }
 
 /* --- Minimal inline schemas to avoid coupling to other project files --- */
 
+// Users
 const UserSchema = new mongoose.Schema(
   {
     username: { type: String, required: true, index: true, unique: true },
@@ -39,6 +60,7 @@ const UserSchema = new mongoose.Schema(
 );
 const User = mongoose.models.User || mongoose.model("User", UserSchema);
 
+// Notes
 const NoteSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -49,6 +71,7 @@ const NoteSchema = new mongoose.Schema(
 );
 const Note = mongoose.models.Note || mongoose.model("Note", NoteSchema);
 
+// Kanban board
 const TaskSchema = new mongoose.Schema({
   title: String,
   description: String,
@@ -69,6 +92,7 @@ const BoardSchema = new mongoose.Schema({
 });
 const Board = mongoose.models.Board || mongoose.model("Board", BoardSchema);
 
+// Lessons
 const LessonSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
@@ -82,11 +106,12 @@ const LessonSchema = new mongoose.Schema(
 );
 const Lesson = mongoose.models.Lesson || mongoose.model("Lesson", LessonSchema);
 
+/* --- Seed logic --- */
 async function seed() {
   try {
     await connect();
 
-    const passwordPlain = "password";
+    const passwordPlain = "password"; // change this after initial run
     const passwordHash = await bcrypt.hash(passwordPlain, 10);
 
     // Upsert admin / instructor / student
@@ -159,6 +184,7 @@ async function seed() {
       await Lesson.findOneAndUpdate({ slug: l.slug }, l, {
         upsert: true,
         new: true,
+        setDefaultsOnInsert: true,
       });
     }
     console.log("Lessons seeded.");
@@ -204,11 +230,14 @@ async function seed() {
     console.log("Seeding complete. Disconnecting...");
   } catch (err) {
     console.error("Seed error:", err);
+    process.exitCode = 1;
   } finally {
     try {
       await mongoose.disconnect();
-    } catch (e) {}
-    process.exit(0);
+    } catch (e) {
+      // ignore
+    }
+    process.exit(process.exitCode === 1 ? 1 : 0);
   }
 }
 

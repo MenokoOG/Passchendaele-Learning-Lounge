@@ -3,15 +3,18 @@ import express from "express";
 import mongoose from "mongoose";
 import morgan from "morgan";
 import cors from "cors";
+import dotenv from "dotenv";
+dotenv.config();
+
 import { MONGO_URI, PORT } from "./config.js";
 
+// routers
 import authRouter from "./routes/auth.js";
 import usersRouter from "./routes/users.js";
 import rawRouter from "./routes/raw.js";
 import scrapeRouter from "./routes/scrape.js";
 import ingestRouter from "./routes/ingest.js";
 import adminSystemRouter from "./routes/adminSystem.js";
-
 import notesRouter from "./routes/notes.js";
 import kanbanRouter from "./routes/kanban.js";
 import calendarRouter from "./routes/calendar.js";
@@ -35,20 +38,23 @@ async function main() {
   app.use("/api/auth", authRouter);
   app.use("/api/users", usersRouter);
 
-  // raw / scrapers / ingest
+  // core features
   app.use("/api/raw", rawRouter);
   app.use("/api/scrape", scrapeRouter);
   app.use("/api/ingest", ingestRouter);
-
-  // user-facing features
   app.use("/api/notes", notesRouter);
   app.use("/api/kanban", kanbanRouter);
-  // calendar endpoints expected by client are mounted at /api/events
+
+  // calendar router: support both /api/calendar and legacy /api/events
+  app.use("/api/calendar", calendarRouter);
   app.use("/api/events", calendarRouter);
+
   app.use("/api/files", filesRouter);
 
-  // admin routes
+  // admin endpoints
   app.use("/api/admin/system", adminSystemRouter);
+
+  // dashboard (returns role-aware widgets)
   app.use("/api/dashboard", dashboardRouter);
 
   app.get("/", (_req, res) => res.json({ ok: true }));

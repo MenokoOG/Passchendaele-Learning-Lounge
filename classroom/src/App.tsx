@@ -16,11 +16,16 @@ import CalendarPage from "./pages/Calendar";
 import FilesPage from "./pages/Files";
 import KanbanPage from "./pages/Kanban";
 import Landing from "./pages/Landing";
+import RegisterPage from "./pages/Register";
+
+// admin pages (explicit)
+import AdminIngestPage from "./pages/admin/Ingest";
+import AdminSystemPage from "./pages/admin/SystemStatus";
+import AdminUsersPage from "./pages/admin/Users";
 
 function Header() {
   const { user, logout } = useAuth();
 
-  // route dashboard link according to role so "Dashboard" always goes where it should
   const dashboardPath = React.useMemo(() => {
     const role = user?.role ?? "";
     if (role === "admin") return "/dashboard/admin";
@@ -128,6 +133,7 @@ export default function App() {
           <Route path="/lessons" element={<Lessons />} />
           <Route path="/videos" element={<Videos />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/lesson/:id" element={<LessonPage />} />
 
           {/* top-level aliases for convenience (tiles/links) */}
@@ -228,6 +234,32 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <KanbanPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* admin sub-pages */}
+          <Route
+            path="/dashboard/admin/system"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminSystemPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/admin/users"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminUsersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/admin/ingest"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminIngestPage />
               </ProtectedRoute>
             }
           />

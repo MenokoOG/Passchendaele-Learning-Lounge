@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
+  const [identifier, setIdentifier] = useState(""); // email or username
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,10 +18,9 @@ export default function LoginPage() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const res = await auth.login(username.trim(), password);
+    const res = await auth.login(identifier.trim(), password);
     setBusy(false);
     if (res.ok) {
-      // successful login -> navigate to previous page or /dashboard
       navigate(from, { replace: true });
     } else {
       setError(res.error || "Login failed");
@@ -33,10 +32,10 @@ export default function LoginPage() {
       <h2 className="text-2xl font-semibold mb-4">Sign in</h2>
       <form onSubmit={onSubmit} className="space-y-3">
         <div>
-          <label className="block text-sm mb-1">Username</label>
+          <label className="block text-sm mb-1">Email or Username</label>
           <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             className="w-full p-2 border border-surface-border rounded"
             autoComplete="username"
             required
@@ -61,11 +60,13 @@ export default function LoginPage() {
           <button className="btn-classroom" disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
           </button>
+
           <button
             type="button"
             onClick={() => {
-              setUsername("M3n0koOg");
-              setPassword("test-password"); // example, replace with your seed
+              // Fill with seeded admin credentials (adjust if your seed uses different values)
+              setIdentifier("admin"); // or "admin@example.com"
+              setPassword("password"); // same as your seed script
             }}
             className="btn-surface"
           >

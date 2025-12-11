@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seed": "node server/seed.cjs"
   },
   "dependencies": {
     "@tiptap/extension-image": "^3.13.0",
