@@ -90,6 +90,45 @@ export async function apiChangePassword(
 }
 
 /* ----------------- Notes / Events / Files / Kanban ----------------- */
+
+export async function apiCreateEvent(payload: {
+  title: string;
+  start: string | Date;
+  end?: string | Date | null;
+  description?: string;
+  allDay?: boolean;
+}) {
+  const r = await client.post("/api/events", payload);
+  return r.data;
+}
+
+export async function apiUpdateEvent(id: string, payload: Partial<any>) {
+  const r = await client.put(`/api/events/${id}`, payload);
+  return r.data;
+}
+
+export async function apiDeleteEvent(id: string) {
+  const r = await client.delete(`/api/events/${id}`);
+  return r.data;
+}
+
+/* Kanban helpers */
+export async function apiCreateBoard(payload: { title: string }) {
+  const r = await client.post("/api/kanban", payload);
+  return r.data;
+}
+
+/* File upload (multipart/form-data) */
+export async function apiUploadFile(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const r = await client.post("/api/files/upload", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+    // increase timeout for larger files if needed
+    timeout: 120000,
+  });
+  return r.data;
+}
 export async function apiListNotes() {
   const r = await client.get("/api/notes");
   return r.data;

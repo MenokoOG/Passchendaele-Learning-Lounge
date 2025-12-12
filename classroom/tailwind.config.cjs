@@ -1,20 +1,26 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
-  darkMode: "class",
+  darkMode: "class", // controlled by .dark on root
   theme: {
     extend: {
       colors: {
-        classroom: {
-          // calm, warm study palette
-          primary: "#0ea5a4", // teal-ish (feel-good)
-          accent: "#f59e0b", // warm amber accent
-          surface: "#fbfdfe", // near-white surface
-          muted: "#94a3b8", // muted text
-        },
+        /* runtime-color tokens map to CSS variables so theme switching is dynamic */
+        brand: "var(--classroom-primary)",
+        "brand-600": "var(--classroom-primary-600)",
+        surface: "var(--surface-bg)",
+        "surface-contrast": "var(--surface-contrast)",
+        muted: "var(--text-muted)",
+        "text-default": "var(--text-default)",
+        accent: "var(--accent)",
+        success: "var(--success)",
+        error: "var(--error)",
       },
       boxShadow: {
-        "soft-card": "0 6px 18px rgba(8,15,26,0.06)",
+        "soft-card": "var(--shadow-md)",
+      },
+      borderRadius: {
+        lg: "var(--radius)",
       },
     },
   },

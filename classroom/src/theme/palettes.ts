@@ -1,4 +1,3 @@
-// src/theme/palettes.ts
 export const PALETTES: Record<string, Record<string, string>> = {
   cool: {
     "classroom-primary": "#0EA5A4",
@@ -56,4 +55,6 @@ export const PALETTES: Record<string, Record<string, string>> = {
     "toast-success-bg": "rgba(16,185,129,0.16)",
     "toast-error-bg": "rgba(239,68,68,0.16)",
   },
+
+  /* Add additional named palettes here if you want (e.g. 'menoko', 'calm-blue') */
 };

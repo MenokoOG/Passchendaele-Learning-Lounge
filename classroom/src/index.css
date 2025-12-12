@@ -2,140 +2,157 @@
 @tailwind components;
 @tailwind utilities;
 
-/* --------------------------
-   Theme variables (light + dark)
-   -------------------------- */
+/* --------------------------------------------
+   Theme tokens & runtime variables (single source)
+   - Light theme values are under :root
+   - Dark theme values under .dark (applied to <html> or <body>)
+   -------------------------------------------- */
 
-/* Comfortable classroom palette — tweak these to taste */
+/* Default (light) theme tokens */
 :root {
-  /* primary branding (used for accents / logo) */
+  /* Branding */
   --classroom-primary: #0ea5a4; /* teal-500 */
   --classroom-primary-600: #0b9a94;
-
-  /* soft periwinkle/indigo for strip */
   --classroom-strip: #7c9cf5;
   --classroom-strip-600: #5c7be6;
-
-  /* small logo circle background */
   --classroom-logo: #0ea5a4;
 
-  /* surfaces */
+  /* Surfaces */
+  --bg: #f8fafc;
   --surface-bg: #ffffff;
-  --surface-contrast: #f8fafc; /* subtle card background */
+  --surface-contrast: #f8fafc;
   --surface-border: rgba(15, 23, 42, 0.06);
 
-  /* text */
+  /* Text */
   --text-default: #0f172a; /* slate-900 */
   --text-muted: #64748b; /* slate-500 */
 
-  /* success */
+  /* Accent / small brand */
+  --accent: #ff8c00;
+
+  /* Success / error */
   --success: #10b981;
   --success-surface: rgba(16, 185, 129, 0.06);
+  --error: #ef4444;
 
-  /* toast */
+  /* Toasts & shimmer */
   --toast-info-bg: rgba(15, 23, 42, 0.92);
   --toast-success-bg: rgba(16, 185, 129, 0.95);
   --toast-error-bg: rgba(239, 68, 68, 0.95);
-
-  /* shimmer / skeleton */
   --shimmer-light: #eef2f7;
   --shimmer-dark: #1f2937;
+
+  /* Motion / radii / shadows */
+  --radius: 0.5rem;
+  --shadow-sm: 0 1px 2px rgba(2, 6, 23, 0.06);
+  --shadow-md: 0 6px 18px rgba(2, 6, 23, 0.08);
+
+  /* Accessibility & layout defaults */
+  --focus-outline: rgba(59, 130, 246, 0.3);
+
+  /* Color scheme preference */
+  color-scheme: light;
 }
 
-/* Theme vars - M3n0koOg Learning Lounge tokens */
-:root {
-  --bg: #f8fafc;
-  --panel-bg: #ffffff;
-  --muted: #6b7280;
-  --text: #0b1220;
-  --code-bg: #f1f5f9;
-  --code-text: #0b1220;
-  --accent: #ff8c00; /* lounge accent */
-  --border: rgba(11, 17, 32, 0.06);
-}
-
+/* Dark theme tokens (applied by adding .dark to <html> or <body>) */
 :root.dark,
 html.dark {
-  --bg: #0b1220;
-  --panel-bg: #0f1724;
-  --muted: #94a3b8;
-  --text: #e6eef8;
-  --code-bg: #071023;
-  --code-text: #e6eef8;
-  --accent: #ff8c00;
-  --border: rgba(255, 255, 255, 0.06);
-}
-
-body {
-  background: var(--bg);
-  color: var(--text);
-}
-
-/* focus style */
-.a11y-focus:focus,
-:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 3px;
-  border-radius: 6px;
-}
-
-/* dark mode overrides when root has .dark (Tailwind convention) */
-:root.dark {
-  --classroom-primary: #4fd1c5;
-  --classroom-primary-600: #2bb6aa;
-
+  --classroom-primary: #60a5fa;
+  --classroom-primary-600: #3b82f6;
   --classroom-strip: #9db0ff;
   --classroom-strip-600: #7a94f0;
-
   --classroom-logo: #4fd1c5;
 
-  --surface-bg: #0b1220;
+  --bg: #0b1220;
+  --surface-bg: #0f1724;
   --surface-contrast: #071025;
   --surface-border: rgba(148, 163, 184, 0.08);
 
   --text-default: #e6eef8;
   --text-muted: #9aa7b8;
 
+  --accent: #ff8c00;
+
   --success: #34d399;
   --success-surface: rgba(34, 197, 94, 0.08);
+  --error: #f87171;
 
   --toast-info-bg: rgba(0, 0, 0, 0.6);
   --toast-success-bg: rgba(16, 185, 129, 0.16);
   --toast-error-bg: rgba(239, 68, 68, 0.16);
-
   --shimmer-light: #263248;
   --shimmer-dark: #0f172a;
+
+  color-scheme: dark;
 }
 
-/* --------------------------
-   Theme-aware utility classes
-   -------------------------- */
+/* --------------------------------------------
+   Global layout & accessibility baseline
+   - mobile-first, fluid type scaling, reduced motion respects user prefs
+   -------------------------------------------- */
 
-/* Card surface — use for lesson cards, panels, etc.
-   Use !important on background so stray utility classes (bg-*) don't override */
+/* Fluid typography — tuned for readability on phones */
+:root {
+  --type-base: clamp(0.95rem, 0.9rem + 0.3vw, 1.0625rem);
+  --type-lg: clamp(1.125rem, 1.05rem + 0.4vw, 1.375rem);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text-default);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: var(--type-base);
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --shadow-sm: none;
+    --shadow-md: none;
+  }
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Focus styles — visible and high-contrast */
+:focus,
+:focus-visible {
+  outline: 3px solid var(--focus-outline);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* Small utility class for consistent focus (use on interactive custom elements) */
+.a11y-focus:focus,
+.a11y-focus:focus-visible {
+  outline: 3px solid var(--focus-outline);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* --------------------------------------------
+   Theme-aware UI utilities
+   -------------------------------------------- */
+
 .card-surface {
   background: var(--surface-bg) !important;
   color: var(--text-default);
-  border-radius: 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--shadow-sm);
   transition: background-color 160ms ease, color 160ms ease,
     border-color 160ms ease;
-  -webkit-font-smoothing: antialiased;
 }
 
-/* Surface border helper */
-.border-surface-border {
-  border-color: var(--surface-border) !important;
-}
-
-/* text helpers */
-.text-classroom {
-  color: var(--classroom-primary) !important;
-}
-.text-classroom-muted {
-  color: var(--text-muted) !important;
-}
-
-/* button styles */
+/* Buttons */
 .btn-classroom {
   background: linear-gradient(
     180deg,
@@ -143,23 +160,26 @@ body {
     var(--classroom-primary-600)
   );
   color: white;
-  padding: 0.45rem 0.75rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 0.375rem;
   font-weight: 600;
-  transition: filter 120ms ease, transform 120ms ease;
+  min-height: 44px; /* touch-target */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgba(0, 0, 0, 0.06);
+  transition: transform 120ms ease, filter 120ms ease;
 }
 .btn-classroom:hover {
-  filter: brightness(0.95);
   transform: translateY(-1px);
+  filter: brightness(0.98);
 }
 .btn-classroom:disabled {
   opacity: 0.6;
   transform: none;
-  filter: none;
 }
 
-/* neutral surface button (light clickable chip) */
+/* Neutral surface button */
 .btn-surface {
   background: linear-gradient(
     180deg,
@@ -167,32 +187,41 @@ body {
     var(--surface-bg)
   );
   color: var(--text-default);
-  padding: 0.35rem 0.6rem;
+  padding: 0.4rem 0.6rem;
   border-radius: 0.375rem;
   border: 1px solid var(--surface-border);
+  min-height: 40px;
   font-weight: 500;
 }
 .btn-surface:hover {
-  filter: brightness(0.98);
+  filter: brightness(0.99);
   transform: translateY(-1px);
 }
 
-/* success surface block (e.g. rewrite result box) */
+/* Surface helpers */
+.border-surface-border {
+  border-color: var(--surface-border) !important;
+}
+.bg-classroom {
+  background: var(--classroom-logo) !important;
+}
 .bg-success-surface {
   background: var(--success-surface) !important;
   color: var(--text-default);
 }
 
-/* small secondary surface used inside sidebars */
-.bg-classroom-surface-2 {
-  background: linear-gradient(
-    180deg,
-    var(--surface-contrast),
-    var(--surface-bg)
-  ) !important;
+/* Typography helpers */
+.text-classroom {
+  color: var(--classroom-primary) !important;
+}
+.text-classroom-muted {
+  color: var(--text-muted) !important;
+}
+.text-success {
+  color: var(--success) !important;
 }
 
-/* shimmer used as skeleton background */
+/* Shimmer skeleton */
 .bg-surface-shimmer {
   background: linear-gradient(
     90deg,
@@ -203,7 +232,7 @@ body {
   opacity: 0.95;
 }
 
-/* branding strip (soft bar near header) - uses primary + strip for a calm gradient */
+/* Branding strip */
 .branding-strip {
   background: linear-gradient(
     90deg,
@@ -213,25 +242,13 @@ body {
   border-bottom: 1px solid rgba(0, 0, 0, 0.03);
 }
 
-/* small classroom color utility for logo box */
-.bg-classroom {
-  background: var(--classroom-logo) !important;
-}
-
-/* text color utilities fallback */
-.text-success {
-  color: var(--success) !important;
-}
-
-/* --------------------------
-   Toast styles (small, non-blocking)
-   -------------------------- */
+/* Toast container + variants */
 .toast-root {
   position: fixed;
   right: 1rem;
   bottom: 1.25rem;
   z-index: 60;
-  max-width: 20rem;
+  max-width: 22rem;
   width: 100%;
   border-radius: 0.5rem;
   box-shadow: 0 8px 24px rgba(2, 6, 23, 0.35);
@@ -241,8 +258,6 @@ body {
   overflow: hidden;
   font-size: 0.95rem;
 }
-
-/* type backgrounds — leverage variables so they respect theme */
 .toast-info {
   background: var(--toast-info-bg);
   color: white;
@@ -255,7 +270,6 @@ body {
   background: var(--toast-error-bg);
   color: white;
 }
-
 .toast-content {
   display: flex;
   gap: 0.5rem;
@@ -264,7 +278,7 @@ body {
 }
 .toast-message {
   flex: 1;
-  line-height: 1.1;
+  line-height: 1.12;
 }
 .toast-close {
   background: transparent;
@@ -276,7 +290,7 @@ body {
   opacity: 0.9;
 }
 
-/* small entrance animation */
+/* Toast animation */
 @keyframes toast-in {
   from {
     transform: translateY(12px) scale(0.99);
@@ -288,27 +302,7 @@ body {
   }
 }
 
-/* --------------------------
-   Small helpful utilities (prose, clamp, motion)
-   -------------------------- */
-:root {
-  color-scheme: light;
-}
-:root.dark {
-  color-scheme: dark;
-}
-
-html,
-body,
-#root {
-  height: 100%;
-}
-
-.prose {
-  max-width: none;
-}
-
-/* simple clamp line utility (used in cards) */
+/* Small layout helpers */
 .line-clamp-3 {
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -316,10 +310,48 @@ body,
   overflow: hidden;
 }
 
-/* reduce motion for preferences */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
-    animation: none !important;
+/* Responsive utilities for improved mobile spacing */
+.container-max {
+  max-width: 96%;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (min-width: 768px) {
+  .container-max {
+    max-width: 72rem;
   }
+}
+
+/* Ensure interactive elements meet tap target sizes */
+button,
+.btn-classroom,
+.btn-surface,
+a[role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Prose utility for lesson content - keep readable on mobile */
+.prose {
+  max-width: 65ch;
+  line-height: 1.7;
+}
+
+/* Minor helpers for code blocks */
+code,
+pre {
+  background: var(--code-bg, rgba(0, 0, 0, 0.03));
+  color: var(--code-text, var(--text-default));
+  border-radius: 6px;
+  padding: 0.125rem 0.25rem;
+}
+
+/* final small reset for HTML elements */
+hr {
+  border-color: var(--surface-border);
+}
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
