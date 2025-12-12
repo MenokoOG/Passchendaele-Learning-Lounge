@@ -1,75 +1,84 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import dayjs from "dayjs";
+import { rewriteRaw } from "../api/api";
+import { useAuth } from "../auth/AuthProvider";
 
 export default function LessonCard({
   lesson,
-  loading = false,
+  onOpenReader,
 }: {
-  lesson?: any;
-  loading?: boolean;
+  lesson: any;
+  onOpenReader?: (lesson: any) => void;
 }) {
-  if (loading) {
-    return (
-      <article
-        className="card-surface border border-surface-border p-4 rounded-lg animate-pulse"
-        role="status"
-        aria-busy="true"
-      >
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex-1">
-            <div className="h-4 rounded-md bg-surface-shimmer w-3/4 mb-3" />
-            <div className="h-3 rounded-md bg-surface-shimmer w-1/2" />
-          </div>
-          <div className="w-12 h-8 rounded-md bg-surface-shimmer" />
-        </div>
+  const { user } = useAuth();
+  const canRewrite =
+    user && (user.role === "instructor" || user.role === "admin");
 
-        <div className="mt-4">
-          <div className="h-3 rounded-md bg-surface-shimmer w-full mb-2" />
-          <div className="h-3 rounded-md bg-surface-shimmer w-5/6" />
-        </div>
-      </article>
-    );
-  }
+  const [rewriting, setRewriting] = useState(false);
 
-  if (!lesson) return null;
-
-  const title = lesson.title || lesson.metadata?.ogTitle || lesson.url;
-  const when = lesson.fetchedAt
-    ? dayjs(lesson.fetchedAt).format("MMM D, YYYY HH:mm")
-    : "Unknown";
+  const handleRewrite = async () => {
+    if (!lesson?._id) {
+      alert("No id available for rewrite.");
+      return;
+    }
+    if (!canRewrite) {
+      alert("Permission denied: requires instructor role.");
+      return;
+    }
+    setRewriting(true);
+    try {
+      const res = await rewriteRaw(lesson._id);
+      console.log("rewrite result:", res);
+      alert("Rewrite finished. Inspect console for rewritten content.");
+    } catch (err) {
+      console.error("rewrite failed", err);
+      alert("Rewrite failed — check console for details.");
+    } finally {
+      setRewriting(false);
+    }
+  };
 
   return (
-    <article className="card-surface border border-surface-border p-4 rounded-lg shadow-sm">
-      <div className="flex items-start justify-between">
-        <div className="min-w-0">
-          <Link
-            to={`/lesson/${lesson._id}`}
-            className="text-lg font-medium text-classroom hover:underline block truncate"
-            title={String(title)}
-          >
-            {title}
-          </Link>
-          <div className="text-sm text-classroom-muted mt-1">
-            {lesson.type} • {when}
-          </div>
-        </div>
-
-        <div className="ml-4 flex-shrink-0">
-          <a
-            href={lesson.url}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-surface text-xs px-2 py-1"
-          >
-            Open
-          </a>
+    <article className="card-surface border border-surface-border p-3 rounded flex items-start gap-3">
+      <div className="flex-1">
+        <Link
+          to={`/lesson/${lesson._id || lesson.id}`}
+          className="font-semibold block"
+        >
+          {lesson.title || "Untitled"}
+        </Link>
+        <div className="text-sm text-classroom-muted mt-1">
+          {lesson.summary}
         </div>
       </div>
 
-      <p className="mt-3 text-classroom-muted text-sm line-clamp-3">
-        {(lesson.text || "").slice(0, 300) || "No preview available."}
-      </p>
+      <div className="flex flex-col gap-2 items-end">
+        {onOpenReader && (
+          <button
+            onClick={() => onOpenReader(lesson)}
+            className="px-2 py-1 text-xs rounded bg-indigo-600 text-white"
+          >
+            Open reader
+          </button>
+        )}
+
+        {canRewrite && (
+          <button
+            onClick={handleRewrite}
+            disabled={rewriting}
+            className="px-2 py-1 text-xs rounded bg-amber-600 text-white"
+          >
+            {rewriting ? "Rewriting…" : "Rewrite"}
+          </button>
+        )}
+
+        <Link
+          to={`/lesson/${lesson._id || lesson.id}`}
+          className="text-xs text-classroom-muted"
+        >
+          Open
+        </Link>
+      </div>
     </article>
   );
 }

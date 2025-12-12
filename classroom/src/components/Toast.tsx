@@ -1,29 +1,19 @@
-import React, { useEffect } from "react";
-
-type ToastType = "success" | "error" | "info";
+// src/components/Toast.tsx
+import React from "react";
 
 export default function Toast({
   visible,
   message,
   type = "info",
   onClose,
-  duration = 3000,
 }: {
   visible: boolean;
   message: string;
-  type?: ToastType;
+  type?: "info" | "success" | "error";
   onClose?: () => void;
-  duration?: number;
 }) {
-  useEffect(() => {
-    if (!visible) return;
-    const t = setTimeout(() => onClose?.(), duration);
-    return () => clearTimeout(t);
-  }, [visible, duration, onClose]);
-
   if (!visible) return null;
-
-  const typeClass =
+  const cls =
     type === "success"
       ? "toast-success"
       : type === "error"
@@ -31,23 +21,10 @@ export default function Toast({
       : "toast-info";
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className={`toast-root ${typeClass}`}
-      onClick={() => onClose?.()}
-    >
+    <div className={`toast-root ${cls}`} role="status" aria-live="polite">
       <div className="toast-content">
         <div className="toast-message">{message}</div>
-        <button
-          className="toast-close"
-          aria-label="Close"
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose?.();
-          }}
-          title="Close"
-        >
+        <button className="toast-close" onClick={onClose}>
           ✕
         </button>
       </div>

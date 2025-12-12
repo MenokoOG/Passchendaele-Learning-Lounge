@@ -2,13 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 
 export type Theme = "light" | "dark" | "system";
 
-const STORAGE_KEY = "google_tee_theme_v1";
+const STORAGE_KEY = "menoko_learning_theme_v1";
 
 export default function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return (raw as Theme) || "system";
+      const raw = localStorage.getItem(STORAGE_KEY) as Theme | null;
+      return raw || "system";
     } catch {
       return "system";
     }
@@ -17,16 +17,25 @@ export default function useTheme() {
   const apply = useCallback((t: Theme) => {
     const root = document.documentElement;
     if (t === "system") {
-      // follow prefers-color-scheme
-      const prefersDark = window.matchMedia?.(
-        "(prefers-color-scheme: dark)"
-      ).matches;
-      root.classList.toggle("dark", prefersDark);
-    } else {
-      root.classList.toggle("dark", t === "dark");
+      // Remove forced class so OS preference applies
+      root.classList.remove("dark");
+      // Immediately add dark class if system prefers dark so visuals match right away
+      try {
+        const prefersDark = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches;
+        if (prefersDark) root.classList.add("dark");
+        else root.classList.remove("dark");
+      } catch {
+        // ignore
+      }
+      return;
     }
+    // force theme
+    root.classList.toggle("dark", t === "dark");
   }, []);
 
+  // Apply when theme changes
   useEffect(() => {
     apply(theme);
     try {
@@ -34,14 +43,15 @@ export default function useTheme() {
     } catch {}
   }, [theme, apply]);
 
-  // if theme=system and user changes OS setting, keep in sync
+  // Keep system setting in sync when theme === 'system'
   useEffect(() => {
     const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
-    function handler() {
+    if (!mq) return;
+    const handler = () => {
       if (theme === "system") apply("system");
-    }
-    mq?.addEventListener?.("change", handler);
-    return () => mq?.removeEventListener?.("change", handler);
+    };
+    mq.addEventListener?.("change", handler);
+    return () => mq.removeEventListener?.("change", handler);
   }, [theme, apply]);
 
   const setLight = () => setTheme("light");

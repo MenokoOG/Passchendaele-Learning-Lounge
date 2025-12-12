@@ -1,81 +1,85 @@
-// src/components/VideoCard.tsx
-import React from "react";
-import dayjs from "dayjs";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { rewriteRaw } from "../api/api";
+import { useAuth } from "../auth/AuthProvider";
 
-function isYouTubeUrl(url?: string) {
-  if (!url) return false;
-  return /(?:youtube\.com|youtu\.be)/i.test(url);
-}
+export default function VideoCard({
+  lesson,
+  onOpenReader,
+}: {
+  lesson: any;
+  onOpenReader?: (lesson: any) => void;
+}) {
+  const { user } = useAuth();
+  const canRewrite =
+    user && (user.role === "instructor" || user.role === "admin");
 
-export default function VideoCard({ lesson }: { lesson: any }) {
-  const title = lesson.title || lesson.metadata?.ogTitle || lesson.url;
-  const when = lesson.fetchedAt
-    ? dayjs(lesson.fetchedAt).format("MMM D, YYYY")
-    : "Unknown";
+  const [rewriting, setRewriting] = useState(false);
 
-  // derive a simple thumbnail for YouTube URLs (safe, no external fetch)
-  let thumb: string | null = null;
-  if (isYouTubeUrl(lesson.url || "")) {
-    const m = (lesson.url || "").match(
-      /(?:v=|\/embed\/|youtu\.be\/)([A-Za-z0-9_-]{6,})/
-    );
-    const id = m?.[1];
-    if (id) thumb = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-  } else if (lesson.metadata?.thumbnail) {
-    thumb = lesson.metadata.thumbnail;
-  }
+  const handleRewrite = async () => {
+    if (!lesson?._id) {
+      alert("No id available for rewrite.");
+      return;
+    }
+    if (!canRewrite) {
+      alert("Permission denied: requires instructor role.");
+      return;
+    }
+    setRewriting(true);
+    try {
+      const res = await rewriteRaw(lesson._id);
+      console.log("rewrite result:", res);
+      alert("Rewrite finished. Inspect console for rewritten content.");
+    } catch (err) {
+      console.error("rewrite failed", err);
+      alert("Rewrite failed — check console for details.");
+    } finally {
+      setRewriting(false);
+    }
+  };
 
   return (
-    <article className="card-surface border border-surface-border p-3 rounded-lg shadow-sm flex gap-4 items-start">
-      {thumb ? (
-        <a
-          href={lesson.url}
-          target="_blank"
-          rel="noreferrer"
-          className="w-40 h-24 flex-shrink-0 overflow-hidden rounded-md"
-          aria-hidden
-        >
-          <img
-            src={thumb}
-            alt={String(title).slice(0, 80)}
-            className="w-full h-full object-cover"
-          />
-        </a>
-      ) : (
-        <div className="w-40 h-24 flex-shrink-0 rounded-md bg-surface-contrast flex items-center justify-center text-sm text-classroom-muted">
-          Video
-        </div>
-      )}
-
-      <div className="min-w-0 flex-1">
+    <article className="card-surface border border-surface-border p-3 rounded flex items-start gap-3">
+      <div className="flex-1">
         <Link
-          to={`/lesson/${lesson._id}`}
-          className="block text-lg font-medium text-classroom truncate"
+          to={`/lesson/${lesson._id || lesson.id}`}
+          className="font-semibold block"
         >
-          {title}
+          {lesson.title || lesson.name || "Untitled"}
         </Link>
-
-        <div className="text-xs text-classroom-muted mt-1">
-          {lesson.type || "video"} • {when}
+        <div className="text-sm text-classroom-muted mt-1">
+          {lesson.summary || lesson.metadata?.ogDescription}
         </div>
+      </div>
 
-        <div className="mt-3 flex items-center gap-2">
-          <a
-            href={lesson.url}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-surface text-xs px-3 py-1"
+      <div className="flex flex-col gap-2 items-end">
+        {onOpenReader && (
+          <button
+            onClick={() => onOpenReader(lesson)}
+            className="px-2 py-1 text-xs rounded bg-indigo-600 text-white"
+            title="Open reader"
           >
-            Open
-          </a>
-          <Link
-            to={`/lesson/${lesson._id}`}
-            className="text-xs text-classroom-muted hover:underline"
+            Open reader
+          </button>
+        )}
+
+        {canRewrite && (
+          <button
+            onClick={handleRewrite}
+            disabled={rewriting}
+            className="px-2 py-1 text-xs rounded bg-amber-600 text-white"
+            title="Rewrite (instructor only)"
           >
-            Details
-          </Link>
-        </div>
+            {rewriting ? "Rewriting…" : "Rewrite"}
+          </button>
+        )}
+
+        <Link
+          to={`/lesson/${lesson._id || lesson.id}`}
+          className="text-xs text-classroom-muted"
+        >
+          Open
+        </Link>
       </div>
     </article>
   );

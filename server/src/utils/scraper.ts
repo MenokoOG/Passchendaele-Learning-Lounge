@@ -41,7 +41,7 @@ export async function fetchAndExtract(
 ) {
   const useP = !!options.usePuppeteer;
   if (useP) {
-    return fetchWithPuppeteer(url);
+    return fetchWithPuppeteer(url, options);
   }
 
   try {
@@ -64,7 +64,7 @@ export async function fetchAndExtract(
     };
   } catch (err) {
     try {
-      return await fetchWithPuppeteer(url);
+      return await fetchWithPuppeteer(url, options);
     } catch (err2) {
       throw err2 ?? err;
     }

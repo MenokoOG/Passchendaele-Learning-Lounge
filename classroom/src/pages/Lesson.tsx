@@ -1,17 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { getRaw, rewriteRaw, listRaw } from "../api";
+import { getRaw, rewriteRaw, listRaw } from "../api/api";
 import Toast from "../components/Toast";
 import PrettyContent from "../components/PrettyContent";
+import { useAuth } from "../auth/AuthProvider";
 
-/**
- * LessonPage
- * - tighter spacing for content area
- * - sanitize/augment contentHtml anchors to open in new tabs
- * - linkify plain-text content (via PrettyContent)
- * - extract video links and list them on page
- * - Prev/Next navigation (uses listRaw)
- */
+/* ---------- helpers (sanitization + video extraction) ---------- */
 
 function sanitizeAndEnhanceHtml(html?: string) {
   if (!html) return "";
@@ -19,17 +19,15 @@ function sanitizeAndEnhanceHtml(html?: string) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
 
-    // Make all anchors open in a new tab and safe rel
+    // Make anchors open in a new tab & safe rel
     doc.querySelectorAll("a").forEach((a) => {
       const href = a.getAttribute("href");
       if (!href) return;
-      // keep same-origin / internal links opening in same tab? For now open all external and http links in new tab
       a.setAttribute("target", "_blank");
       a.setAttribute("rel", "noopener noreferrer");
       a.classList.add("text-classroom", "underline");
     });
 
-    // Return serialized HTML
     return doc.body.innerHTML;
   } catch (err) {
     console.error("sanitize error", err);
@@ -47,10 +45,8 @@ function extractVideoLinksFromDoc(doc: any) {
     if (m) out.add(m[0]);
   };
 
-  // check doc.url
   addIfYouTube(doc?.url);
 
-  // check contentHtml anchors
   try {
     if (doc?.contentHtml) {
       const parser = new DOMParser();
@@ -63,7 +59,6 @@ function extractVideoLinksFromDoc(doc: any) {
     }
   } catch {}
 
-  // scan text for youtube URLs
   if (doc?.text) {
     const matches = String(doc.text).matchAll(/https?:\/\/[^\s)'"<>]+/gi);
     for (const m of matches) {
@@ -72,7 +67,6 @@ function extractVideoLinksFromDoc(doc: any) {
     }
   }
 
-  // also inspect metadata.sections (if they include links)
   try {
     const sections = doc?.metadata?.sections || [];
     for (const s of sections) {
@@ -88,15 +82,23 @@ function extractVideoLinksFromDoc(doc: any) {
   return Array.from(out);
 }
 
+/* ---------- Component ---------- */
+
 export default function LessonPage() {
+  // --- router hooks (always first, stable) ---
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  const { user } = useAuth();
+  const canRewrite =
+    user && (user.role === "instructor" || user.role === "admin");
+
+  // --- state hooks (declare all up front) ---
   const [doc, setDoc] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [rewriting, setRewriting] = useState(false);
   const [rewritten, setRewritten] = useState<string | null>(null);
 
-  // prev/next
   const [lessonList, setLessonList] = useState<any[] | null>(null);
   const [toast, setToast] = useState<{
     message: string;
@@ -104,9 +106,77 @@ export default function LessonPage() {
     visible: boolean;
   } | null>(null);
 
+  // --- refs for TTS & other stable values ---
+  const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const speakingRef = useRef(false);
+
+  // --- TTS helpers (stable callbacks) ---
+  const stopTTS = React.useCallback(() => {
+    try {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    } catch (err) {
+      console.warn("stopTTS error", err);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    return () => {
+      stopTTS();
+    };
+  }, [stopTTS]);
+
+  const startTTS = useCallback(
+    (text: string, opts?: { lang?: string; rate?: number; pitch?: number }) => {
+      try {
+        if (!("speechSynthesis" in window)) {
+          console.warn("SpeechSynthesis not supported in this browser");
+          return;
+        }
+
+        stopTTS(); // cancel any existing speech
+
+        const utter = new SpeechSynthesisUtterance(
+          String(text).slice(0, 200000)
+        );
+        utter.lang = opts?.lang ?? "en-US";
+        if (typeof opts?.rate === "number") utter.rate = opts!.rate!;
+        if (typeof opts?.pitch === "number") utter.pitch = opts!.pitch!;
+        utter.onend = () => {
+          speakingRef.current = false;
+          ttsUtteranceRef.current = null;
+        };
+        utter.onerror = (e) => {
+          console.error("TTS error", e);
+          speakingRef.current = false;
+          ttsUtteranceRef.current = null;
+        };
+
+        ttsUtteranceRef.current = utter;
+        speakingRef.current = true;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utter);
+      } catch (err) {
+        console.error("startTTS failed", err);
+      }
+    },
+    [stopTTS]
+  );
+
+  // --- Effects: cleanup and data loading (always after callbacks/declarations) ---
+  useEffect(() => {
+    return () => {
+      try {
+        stopTTS();
+      } catch {}
+    };
+  }, [stopTTS]);
+
   useEffect(() => {
     if (!id) return;
     setLoading(true);
+
     getRaw(id)
       .then((d) => setDoc(d))
       .catch((e) => {
@@ -118,7 +188,6 @@ export default function LessonPage() {
     // fetch list for prev/next (best-effort)
     listRaw()
       .then((arr) => {
-        // sort ascending by fetchedAt (oldest → newest) so Prev/Next feel natural
         const sorted = (arr || [])
           .slice()
           .sort(
@@ -128,8 +197,10 @@ export default function LessonPage() {
         setLessonList(sorted);
       })
       .catch(() => setLessonList(null));
+    // id is the only dependency needed here
   }, [id]);
 
+  // --- helper functions (no hooks inside) ---
   function showToast(
     message: string,
     type: "success" | "error" | "info" = "info"
@@ -142,6 +213,10 @@ export default function LessonPage() {
 
   async function onRewrite() {
     if (!id) return;
+    if (!canRewrite) {
+      showToast("Permission denied: rewrite requires instructor role", "error");
+      return;
+    }
     setRewriting(true);
     try {
       const res = await rewriteRaw(id);
@@ -156,7 +231,7 @@ export default function LessonPage() {
     }
   }
 
-  // navigation helpers
+  // --- stable memoized helpers ---
   const currentIndex = useMemo(() => {
     if (!lessonList || !doc) return -1;
     return lessonList.findIndex((l) => String(l._id) === String(doc._id));
@@ -173,15 +248,33 @@ export default function LessonPage() {
     return null;
   }, [currentIndex, lessonList]);
 
-  function goPrev() {
+  const goPrev = useCallback(() => {
     if (!prevLesson) return;
     navigate(`/lesson/${prevLesson._id}`);
-  }
-  function goNext() {
+  }, [navigate, prevLesson]);
+
+  const goNext = useCallback(() => {
     if (!nextLesson) return;
     navigate(`/lesson/${nextLesson._id}`);
-  }
+  }, [navigate, nextLesson]);
 
+  const extractTextForReader = useCallback(() => {
+    try {
+      if (doc?.contentHtml) {
+        const p = new DOMParser();
+        const d = p.parseFromString(doc.contentHtml, "text/html");
+        d.querySelectorAll("script, style, noscript").forEach((el) =>
+          el.remove()
+        );
+        return d.body.textContent || "";
+      }
+      return String(doc?.text || doc?.metadata?.summary || doc?.url || "");
+    } catch {
+      return String(doc?.text || "");
+    }
+  }, [doc]);
+
+  // ---- after all hooks & callbacks we can early-return UI cases ----
   if (loading) return <div>Loading lesson...</div>;
   if (!doc)
     return (
@@ -193,13 +286,9 @@ export default function LessonPage() {
       </div>
     );
 
-  // sanitized html to render (anchors forced to open new tab)
+  // --- derived values for render ---
   const enhancedHtml = sanitizeAndEnhanceHtml(doc.contentHtml);
-
-  // video links found in the doc
   const videoLinks = extractVideoLinksFromDoc(doc);
-
-  // friendly youTube embed detection (prefers first found)
   const youTubeMatch =
     (doc.url || "").match(/(?:v=|\/embed\/|youtu\.be\/)([A-Za-z0-9_-]{6,})/) ||
     (videoLinks[0] || "").match(
@@ -209,7 +298,6 @@ export default function LessonPage() {
   return (
     <>
       <div className="space-y-4">
-        {/* small breadcrumb + prev/next */}
         <div className="flex items-center gap-3 text-sm">
           <button
             onClick={() => navigate(-1)}
@@ -257,13 +345,15 @@ export default function LessonPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={onRewrite}
-              disabled={rewriting}
-              className="btn-classroom text-sm"
-            >
-              {rewriting ? "Rewriting…" : "Rewrite (OpenAI)"}
-            </button>
+            {canRewrite && (
+              <button
+                onClick={onRewrite}
+                disabled={rewriting}
+                className="btn-classroom text-sm"
+              >
+                {rewriting ? "Rewriting…" : "Rewrite (OpenAI)"}
+              </button>
+            )}
 
             <a
               href={doc.url}
@@ -276,14 +366,12 @@ export default function LessonPage() {
 
             <button
               onClick={async () => {
-                const ok = await (async () => {
-                  const url = `${window.location.origin}/lesson/${doc._id}`;
-                  try {
-                    if (navigator.clipboard?.writeText) {
-                      await navigator.clipboard.writeText(url);
-                      return true;
-                    }
-                    // fallback
+                const url = `${window.location.origin}/lesson/${doc._id}`;
+                try {
+                  if (navigator.clipboard?.writeText) {
+                    await navigator.clipboard.writeText(url);
+                    showToast("Link copied to clipboard", "success");
+                  } else {
                     const ta = document.createElement("textarea");
                     ta.value = url;
                     ta.setAttribute("readonly", "");
@@ -291,15 +379,13 @@ export default function LessonPage() {
                     ta.style.left = "-9999px";
                     document.body.appendChild(ta);
                     ta.select();
-                    const ok = document.execCommand("copy");
+                    document.execCommand("copy");
                     ta.remove();
-                    return ok;
-                  } catch {
-                    return false;
+                    showToast("Link copied to clipboard", "success");
                   }
-                })();
-                if (ok) showToast("Link copied to clipboard", "success");
-                else showToast("Copy failed", "error");
+                } catch {
+                  showToast("Copy failed", "error");
+                }
               }}
               className="btn-surface text-sm"
             >
@@ -318,7 +404,6 @@ export default function LessonPage() {
                     });
                     showToast("Shared successfully", "success");
                   } else {
-                    // fallback to copy
                     const ok = await navigator.clipboard
                       ?.writeText?.(url)
                       .then(() => true)
@@ -340,7 +425,6 @@ export default function LessonPage() {
           </div>
         </div>
 
-        {/* embedded video (if available) */}
         {youTubeMatch ? (
           <div className="w-full aspect-video bg-black rounded overflow-hidden">
             <iframe
@@ -356,9 +440,28 @@ export default function LessonPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <section className="card-surface border border-surface-border p-3 rounded shadow-sm">
-              <h3 className="font-semibold mb-2 text-classroom">
-                Lesson content
-              </h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-classroom">Lesson content</h3>
+
+                <div className="flex items-center gap-2 text-sm">
+                  <button
+                    onClick={() => {
+                      const t = extractTextForReader();
+                      if (t) startTTS(t);
+                      else showToast("No readable text found", "info");
+                    }}
+                    className="btn-surface px-2 py-1 text-xs"
+                  >
+                    ▶️ Read
+                  </button>
+                  <button
+                    onClick={() => stopTTS()}
+                    className="btn-surface px-2 py-1 text-xs"
+                  >
+                    ⏹ Stop
+                  </button>
+                </div>
+              </div>
 
               {doc.contentHtml ? (
                 <div
@@ -406,7 +509,6 @@ export default function LessonPage() {
               ))}
             </div>
 
-            {/* Video links list */}
             {videoLinks.length > 0 && (
               <>
                 <hr className="my-3 border-surface-border" />
