@@ -4,16 +4,18 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 
 const SectionTile: React.FC<{
-  to: string;
+  to?: string;
   title: string;
   desc: string;
   icon?: React.ReactNode;
   badge?: string | null;
-}> = ({ to, title, desc, icon, badge }) => {
-  return (
-    <Link
-      to={to}
-      className="block card-surface hover:shadow-lg transition-shadow p-4 rounded-lg h-full focus:outline-none a11y-focus"
+  disabled?: boolean;
+}> = ({ to, title, desc, icon, badge, disabled }) => {
+  const content = (
+    <div
+      className={`card-surface hover:shadow-lg transition-shadow p-4 rounded-lg h-full focus:outline-none a11y-focus ${
+        disabled ? "opacity-60 pointer-events-none" : ""
+      }`}
       aria-label={`Open ${title}`}
     >
       <div className="flex items-start gap-3">
@@ -32,7 +34,15 @@ const SectionTile: React.FC<{
           <p className="text-sm text-classroom-muted mt-1">{desc}</p>
         </div>
       </div>
+    </div>
+  );
+
+  return to && !disabled ? (
+    <Link to={to} className="block">
+      {content}
     </Link>
+  ) : (
+    <div>{content}</div>
   );
 };
 
@@ -41,7 +51,7 @@ export default function LandingPage() {
 
   return (
     <div className="space-y-8">
-      {/* Hero */}
+      {/* Hero (unchanged) */}
       <section className="rounded-lg p-8 bg-gradient-to-r from-white/60 to-slate-50/40 dark:from-slate-900/40 dark:to-slate-800/40 border border-surface-border">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
           <div>
@@ -96,23 +106,46 @@ export default function LandingPage() {
             <div className="rounded-lg border border-surface-border p-4 bg-white/60 dark:bg-slate-900/60">
               <h4 className="text-sm font-medium mb-3">Quick start</h4>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded bg-slate-50 dark:bg-slate-800">
+              <div className="grid grid-cols-1 gap-3">
+                <Link
+                  to="/lessons"
+                  className="p-3 rounded bg-slate-50 dark:bg-slate-800 a11y-focus"
+                >
                   <div className="text-xs text-classroom-muted">Lessons</div>
-                  <div className="font-semibold mt-1">Start a course</div>
-                </div>
-                <div className="p-3 rounded bg-slate-50 dark:bg-slate-800">
+                  <div className="font-semibold mt-1">
+                    Jump into the latest course
+                  </div>
+                </Link>
+
+                <Link
+                  to="/notes"
+                  className="p-3 rounded bg-slate-50 dark:bg-slate-800 a11y-focus"
+                >
                   <div className="text-xs text-classroom-muted">Notes</div>
-                  <div className="font-semibold mt-1">Take notes</div>
-                </div>
-                <div className="p-3 rounded bg-slate-50 dark:bg-slate-800">
-                  <div className="text-xs text-classroom-muted">Instructor</div>
-                  <div className="font-semibold mt-1">Create lesson</div>
-                </div>
-                <div className="p-3 rounded bg-slate-50 dark:bg-slate-800">
-                  <div className="text-xs text-classroom-muted">Kanban</div>
-                  <div className="font-semibold mt-1">Sprint board</div>
-                </div>
+                  <div className="font-semibold mt-1">Open your notes</div>
+                </Link>
+
+                <Link
+                  to="/dashboard/kanban"
+                  className="p-3 rounded bg-slate-50 dark:bg-slate-800 a11y-focus"
+                >
+                  <div className="text-xs text-classroom-muted">Practice</div>
+                  <div className="font-semibold mt-1">
+                    Open practice sprints
+                  </div>
+                </Link>
+
+                <Link
+                  to="/accessibility"
+                  className="p-3 rounded bg-slate-50 dark:bg-slate-800 a11y-focus"
+                >
+                  <div className="text-xs text-classroom-muted">
+                    Accessibility
+                  </div>
+                  <div className="font-semibold mt-1">
+                    Adjust reader settings
+                  </div>
+                </Link>
               </div>
             </div>
           </div>
@@ -173,18 +206,29 @@ export default function LandingPage() {
               desc="Open a readable transcript for videos and lessons."
               icon="📖"
             />
-            <SectionTile
-              to="/dashboard/admin"
-              title="Admin / System"
-              desc="System status, backup tools, and user management."
-              icon="🛠️"
-              badge={user?.role === "admin" ? "Admin" : null}
-            />
+
+            {/* Admin tile: only clickable for admin role */}
+            {user?.role === "admin" ? (
+              <SectionTile
+                to="/dashboard/admin/users"
+                title="Admin / System"
+                desc="System status, backup tools, and user management."
+                icon="🛠️"
+                badge="Admin"
+              />
+            ) : (
+              <SectionTile
+                title="Admin / System"
+                desc="Admin tools are restricted. Request access from an instructor."
+                icon="🔒"
+                disabled={true}
+              />
+            )}
           </div>
         </div>
       </section>
 
-      {/* Footer / small credits */}
+      {/* Footer */}
       <section>
         <div className="max-w-6xl mx-auto text-sm text-classroom-muted">
           <div className="flex items-center justify-between gap-4">

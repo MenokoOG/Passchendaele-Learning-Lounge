@@ -38,6 +38,10 @@ async function main() {
   app.use("/api/auth", authRouter);
   app.use("/api/users", usersRouter);
 
+  // also expose admin-friendly path for user management so frontend can call /api/admin/users
+  // usersRouter already enforces requireRole("admin") on endpoints, so security is preserved.
+  app.use("/api/admin/users", usersRouter);
+
   // core features
   app.use("/api/raw", rawRouter);
   app.use("/api/scrape", scrapeRouter);
@@ -51,11 +55,14 @@ async function main() {
 
   app.use("/api/files", filesRouter);
 
-  // admin endpoints
+  // admin endpoints (system) mounted at /api/admin/system
   app.use("/api/admin/system", adminSystemRouter);
 
-  // dashboard (returns role-aware widgets)
+  // expose admin-friendly dashboard path -> /api/admin/dashboard
+  // dashboardRouter uses requireAuth and returns role-specific widgets; we mount it under both
+  // /api/dashboard (existing) and /api/admin/dashboard so frontend admin calls succeed.
   app.use("/api/dashboard", dashboardRouter);
+  app.use("/api/admin/dashboard", dashboardRouter);
 
   app.get("/", (_req, res) => res.json({ ok: true }));
 

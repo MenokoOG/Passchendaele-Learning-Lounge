@@ -64,9 +64,9 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => {
-              // Fill with seeded admin credentials (adjust if your seed uses different values)
-              setIdentifier("admin"); // or "admin@example.com"
-              setPassword("password"); // same as your seed script
+              // Fill with seeded test student credentials
+              setIdentifier("testuser"); // change to your seeded student username or email
+              setPassword("password"); // same password as your seed script for testuser
             }}
             className="btn-surface"
           >

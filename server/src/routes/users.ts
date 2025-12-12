@@ -7,6 +7,49 @@ import bcrypt from "bcryptjs";
 const router = express.Router();
 
 /**
+ * Admin-only: create user
+ * POST /
+ * body: { username, email, password, role? }
+ */
+router.post("/", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    const { username, email, password, role } = req.body ?? {};
+    if (!username || !email || !password) {
+      return res
+        .status(400)
+        .json({ error: "username, email and password required" });
+    }
+
+    // check uniqueness
+    const existing = await User.findOne({
+      $or: [{ email: String(email).toLowerCase() }, { username }],
+    });
+    if (existing) {
+      return res.status(409).json({ error: "User already exists" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(String(password), salt);
+
+    const u = new User({
+      username,
+      email: String(email).toLowerCase(),
+      passwordHash,
+      role: role || "student",
+    });
+
+    await u.save();
+
+    // return created user without passwordHash
+    const out = await User.findById(u._id).select("-passwordHash").lean();
+    return res.status(201).json(out);
+  } catch (err: any) {
+    console.error("users.create error:", err);
+    return res.status(500).json({ error: "Failed to create user" });
+  }
+});
+
+/**
  * Admin-only: list users
  */
 router.get("/", requireAuth, requireRole("admin"), async (req, res) => {

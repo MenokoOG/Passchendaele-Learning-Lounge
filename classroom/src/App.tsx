@@ -1,6 +1,6 @@
 // src/App.tsx
 import React from "react";
-import { Link, Routes, Route } from "react-router-dom";
+import { Link, Routes, Route, Navigate } from "react-router-dom";
 import Lessons from "./pages/Lessons";
 import ThemeToggle from "./components/ThemeToggle";
 import { useAuth } from "./auth/AuthProvider";
@@ -23,11 +23,38 @@ import AdminIngestPage from "./pages/admin/Ingest";
 import AdminSystemPage from "./pages/admin/SystemStatus";
 import AdminUsersPage from "./pages/admin/Users";
 
+// new role guard (from the changes we made)
+import RequireRole from "./auth/RequireRole";
+
+/**
+ * DashboardRedirect
+ * Redirects authenticated users to the dashboard path appropriate to their role.
+ * If no user, sends to /login.
+ */
+function DashboardRedirect() {
+  const { user, loading } = useAuth();
+
+  // while auth resolving, render a small loader text so route stays stable
+  if (loading) return <div className="text-classroom-muted">Loading…</div>;
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const role = (user.role ?? "student").toString();
+
+  if (role === "admin") return <Navigate to="/dashboard/admin" replace />;
+  if (role === "instructor")
+    return <Navigate to="/dashboard/instructor" replace />;
+  // default to student dashboard
+  return <Navigate to="/dashboard/student" replace />;
+}
+
 function Header() {
   const { user, logout } = useAuth();
 
   const dashboardPath = React.useMemo(() => {
-    const role = user?.role ?? "";
+    const role = (user?.role ?? "student").toString();
     if (role === "admin") return "/dashboard/admin";
     if (role === "instructor") return "/dashboard/instructor";
     if (role === "student") return "/dashboard/student";
@@ -85,16 +112,21 @@ function Header() {
         {user ? (
           <div className="text-sm text-classroom-muted flex items-center gap-3">
             <div>
-              {user.username} ({user.role})
+              {user.username} ({user.role ?? "student"})
             </div>
             <button onClick={() => logout()} className="btn-surface">
               Sign out
             </button>
           </div>
         ) : (
-          <Link to="/login" className="btn-surface">
-            Sign in
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link to="/login" className="btn-surface">
+              Sign in
+            </Link>
+            <Link to="/register" className="btn-classroom">
+              Register
+            </Link>
+          </div>
         )}
 
         <ThemeToggle />
@@ -170,21 +202,23 @@ export default function App() {
             }
           />
 
-          {/* Dashboard top-level route. Protected: require auth */}
+          {/* Dashboard top-level route: redirect users to role-specific dashboard */}
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <DashboardStudent />
+                <DashboardRedirect />
               </ProtectedRoute>
             }
           />
+
+          {/* Role-specific dashboards */}
           <Route
             path="/dashboard/admin"
             element={
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <RequireRole role="admin">
                 <DashboardAdmin />
-              </ProtectedRoute>
+              </RequireRole>
             }
           />
           <Route
@@ -204,7 +238,7 @@ export default function App() {
             }
           />
 
-          {/* Dashboard sub-pages (also available via top-level aliases) */}
+          {/* Dashboard sub-pages (aliases) */}
           <Route
             path="/dashboard/notes"
             element={
@@ -238,31 +272,34 @@ export default function App() {
             }
           />
 
-          {/* admin sub-pages */}
+          {/* admin sub-pages protected explicitly with RequireRole */}
           <Route
             path="/dashboard/admin/system"
             element={
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <RequireRole role="admin">
                 <AdminSystemPage />
-              </ProtectedRoute>
+              </RequireRole>
             }
           />
           <Route
             path="/dashboard/admin/users"
             element={
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <RequireRole role="admin">
                 <AdminUsersPage />
-              </ProtectedRoute>
+              </RequireRole>
             }
           />
           <Route
             path="/dashboard/admin/ingest"
             element={
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <RequireRole role="admin">
                 <AdminIngestPage />
-              </ProtectedRoute>
+              </RequireRole>
             }
           />
+
+          {/* fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
 

@@ -1,38 +1,71 @@
 // src/api/index.ts
-import axios, { AxiosRequestConfig } from "axios";
+import axios, { AxiosInstance } from "axios";
 
 /**
- * Single API client used across the app.
- * VITE_API_URL can be set in .env (Vite uses import.meta.env).
+ * Central API entrypoint for frontend.
+ * - Safe environment access (no `process` reference at runtime in browser).
+ * - Exports axios instance augmented with api* helpers.
+ *
+ * Important: set VITE_API_URL (Vite) or REACT_APP_API_URL (Create-React-App envs)
+ * if your API is external. Otherwise leave blank to use relative paths.
  */
-const API = (import.meta.env.VITE_API_URL || "http://localhost:4000").replace(
-  /\/$/,
-  ""
-);
 
-const client = axios.create({
-  baseURL: API,
+const TOKEN_KEY = "token";
+
+/* --- Resolve API base safely --- */
+function resolveApiBase(): string {
+  try {
+    // Vite: import.meta.env.VITE_API_URL
+    if (typeof import.meta !== "undefined" && typeof import.meta.env !== "undefined" && import.meta.env.VITE_API_URL) {
+      return String(import.meta.env.VITE_API_URL).replace(/\/$/, "");
+    }
+  } catch {
+    // ignore
+  }
+
+  // If `process` exists (e.g. in some builds / node) use it safely
+  try {
+    if (typeof process !== "undefined" && process.env) {
+      const val =
+        (process.env as any).VITE_API_URL ||
+        (process.env as any).REACT_APP_API_URL ||
+        (process.env as any).API_BASE;
+      if (val) return String(val).replace(/\/$/, "");
+    }
+  } catch {
+    // ignore
+  }
+
+  // default: relative (same host)
+  return "";
+}
+
+const API_BASE = resolveApiBase();
+
+/* --- axios client --- */
+const client: AxiosInstance = axios.create({
+  baseURL: API_BASE,
   headers: { "Content-Type": "application/json" },
 });
 
-// token key used by your AuthProvider/tokenStorage
-const TOKEN_KEY = "token";
-
-// attach token automatically if present in localStorage
-client.interceptors.request.use((cfg: AxiosRequestConfig | any) => {
-  try {
-    const t = localStorage.getItem(TOKEN_KEY);
-    if (t) {
-      cfg.headers = cfg.headers || {};
-      (cfg.headers as any).Authorization = `Bearer ${t}`;
+/* attach auth header automatically from localStorage */
+client.interceptors.request.use(
+  (cfg) => {
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (token) {
+        cfg.headers = cfg.headers || {};
+        (cfg.headers as any).Authorization = `Bearer ${token}`;
+      }
+    } catch (e) {
+      // ignore localStorage errors
     }
-  } catch (e) {
-    // ignore
-  }
-  return cfg;
-});
+    return cfg;
+  },
+  (err) => Promise.reject(err)
+);
 
-// optional: handle 401 globally (client-side logout)
+/* on 401, clear local token and rethrow */
 client.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -47,9 +80,115 @@ client.interceptors.response.use(
   }
 );
 
-export default client;
+/* --- types --- */
+export type FileMeta = {
+  _id?: string;
+  id?: string;
+  originalName?: string;
+  mimeType?: string;
+  size?: number;
+  path?: string;
+  publicUrl?: string;
+  createdAt?: string;
+  [k: string]: any;
+};
 
-/* ----------------- Auth ----------------- */
+export type PresignResult = {
+  url: string;
+  key?: string;
+  id?: string;
+};
+
+export type NoteShape = {
+  _id?: string;
+  user?: string;
+  title?: string;
+  content?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [k: string]: any;
+};
+
+/* ----------------- API wrappers ----------------- */
+
+/* Files */
+export async function apiListFiles(): Promise<FileMeta[]> {
+  const r = await client.get("/api/files");
+  return r.data;
+}
+
+export async function apiPresignUpload(opts: {
+  filename: string;
+  contentType?: string;
+}): Promise<PresignResult> {
+  const r = await client.post("/api/files/presign", {
+    filename: opts.filename,
+    contentType: opts.contentType,
+  });
+  return r.data;
+}
+
+export async function apiConfirmUpload(id: string, payload: { size?: number; key?: string }) {
+  const r = await client.post(`/api/files/confirm/${encodeURIComponent(id)}`, payload);
+  return r.data;
+}
+
+export async function apiGetDownloadUrl(id: string): Promise<{ url?: string } | null> {
+  const r = await client.get(`/api/files/download/${encodeURIComponent(id)}`);
+  return r.data ?? null;
+}
+
+export async function apiDeleteFile(id: string) {
+  const r = await client.delete(`/api/files/${encodeURIComponent(id)}`);
+  return r.data;
+}
+
+/* Events / Calendar */
+export async function apiListEvents(): Promise<any[]> {
+  const r = await client.get("/api/events");
+  return r.data;
+}
+export async function apiCreateEvent(payload: Record<string, any>) {
+  const r = await client.post("/api/events", payload);
+  return r.data;
+}
+
+/* Kanban */
+export async function apiListKanban(): Promise<any[]> {
+  const r = await client.get("/api/kanban");
+  return r.data;
+}
+export async function apiCreateKanban(payload: Record<string, any>) {
+  const r = await client.post("/api/kanban", payload);
+  return r.data;
+}
+
+/* Notes */
+export async function apiListNotes(): Promise<NoteShape[]> {
+  const r = await client.get("/api/notes");
+  return r.data ?? [];
+}
+export async function apiCreateNote(payload: { title: string; body?: string; content?: string }) {
+  const body = { title: payload.title, content: payload.body ?? payload.content ?? "" };
+  const r = await client.post("/api/notes", body);
+  return r.data;
+}
+export async function apiUpdateNote(id: string, payload: { title?: string; body?: string; content?: string }) {
+  const body = { title: payload.title, content: payload.body ?? payload.content };
+  const r = await client.put(`/api/notes/${encodeURIComponent(id)}`, body);
+  return r.data;
+}
+export async function apiDeleteNote(id: string) {
+  const r = await client.delete(`/api/notes/${encodeURIComponent(id)}`);
+  return r.data;
+}
+
+/* Auth helpers */
+export async function apiRegister(username: string, email: string, password: string) {
+  const r = await client.post("/api/auth/register", { username, email, password });
+  return r.data;
+}
+
 export async function apiLogin(emailOrUsername: string, password: string) {
   const r = await client.post("/api/auth/login", {
     email: emailOrUsername,
@@ -57,180 +196,60 @@ export async function apiLogin(emailOrUsername: string, password: string) {
     emailOrUsername,
     password,
   });
-  return r.data; // { ok, token, user } or { user, token } depending on server
-}
-
-export async function apiRegister(
-  username: string,
-  email: string,
-  password: string
-) {
-  const r = await client.post("/api/auth/register", {
-    username,
-    email,
-    password,
-  });
   return r.data;
 }
 
-export async function apiGetMe() {
+export async function apiMe() {
   const r = await client.get("/api/auth/me");
   return r.data;
 }
 
-export async function apiChangePassword(
-  oldPassword: string | undefined,
-  newPassword: string
-) {
-  const r = await client.post("/api/auth/change-password", {
-    oldPassword,
-    newPassword,
-  });
-  return r.data;
-}
-
-/* ----------------- Notes / Events / Files / Kanban ----------------- */
-
-export async function apiCreateEvent(payload: {
-  title: string;
-  start: string | Date;
-  end?: string | Date | null;
-  description?: string;
-  allDay?: boolean;
-}) {
-  const r = await client.post("/api/events", payload);
-  return r.data;
-}
-
-export async function apiUpdateEvent(id: string, payload: Partial<any>) {
-  const r = await client.put(`/api/events/${id}`, payload);
-  return r.data;
-}
-
-export async function apiDeleteEvent(id: string) {
-  const r = await client.delete(`/api/events/${id}`);
-  return r.data;
-}
-
-/* Kanban helpers */
-export async function apiCreateBoard(payload: { title: string }) {
-  const r = await client.post("/api/kanban", payload);
-  return r.data;
-}
-
-/* File upload (multipart/form-data) */
-export async function apiUploadFile(file: File) {
-  const form = new FormData();
-  form.append("file", file);
-  const r = await client.post("/api/files/upload", form, {
-    headers: { "Content-Type": "multipart/form-data" },
-    // increase timeout for larger files if needed
-    timeout: 120000,
-  });
-  return r.data;
-}
-export async function apiListNotes() {
-  const r = await client.get("/api/notes");
-  return r.data;
-}
-
-export async function apiCreateNote(note: {
-  title: string;
-  body?: string;
-  content?: string;
-}) {
-  const r = await client.post("/api/notes", {
-    title: note.title,
-    content: note.body ?? note.content ?? "",
-  });
-  if (r.data?.note) return r.data.note;
-  return r.data;
-}
-
-export async function apiUpdateNote(
-  id: string,
-  payload: { title?: string; body?: string }
-) {
-  const r = await client.put(`/api/notes/${id}`, {
-    title: payload.title,
-    content: payload.body,
-  });
-  if (r.data?.note) return r.data.note;
-  return r.data;
-}
-
-export async function apiDeleteNote(id: string) {
-  const r = await client.delete(`/api/notes/${id}`);
-  return r.data;
-}
-
-/**
- * IMPORTANT: this is the function your Calendar.tsx expects.
- * Make sure Calendar.tsx imports: `import { apiListEvents } from "../api";`
- */
-export async function apiListEvents() {
-  const r = await client.get("/api/events");
-  return r.data;
-}
-
-export async function apiListFiles() {
-  const r = await client.get("/api/files");
-  return r.data;
-}
-
-export async function apiListKanban() {
-  const r = await client.get("/api/kanban");
-  return r.data;
-}
-
-/* ----------------- Admin / Users ----------------- */
-export async function apiListUsers() {
-  const r = await client.get("/api/users");
-  return r.data;
-}
-export async function apiUpdateUserRole(id: string, role: string) {
-  const r = await client.put(`/api/users/${id}`, { role });
-  return r.data;
-}
-export async function apiDeleteUser(id: string) {
-  const r = await client.delete(`/api/users/${id}`);
-  return r.data;
-}
-
-/* Profile update used by AuthProvider */
-export async function updateProfileApi(profile: any) {
+export async function apiUpdateProfile(profile: any) {
   const r = await client.put("/api/auth/profile", profile);
-  return r.data.user ?? r.data;
-}
-
-/* System admin helpers (optional) */
-export async function apiSystemStatus() {
-  const r = await client.get("/api/admin/system/status");
-  return r.data;
-}
-export async function apiSystemBackup() {
-  const r = await client.post("/api/admin/system/backup");
   return r.data;
 }
 
-/* Lessons & raw endpoints */
-export async function listLessons() {
-  const r = await client.get("/api/lessons");
-  return r.data;
+export async function apiLogout() {
+  try {
+    const r = await client.post("/api/auth/logout");
+    return r.data;
+  } catch {
+    return null;
+  }
 }
-export async function getLesson(id: string) {
-  const r = await client.get(`/api/lessons/${id}`);
-  return r.data.lesson ?? r.data;
+
+/* --- Aggregate and export --- */
+const apiObject = {
+  apiListFiles,
+  apiPresignUpload,
+  apiConfirmUpload,
+  apiGetDownloadUrl,
+  apiDeleteFile,
+
+  apiListEvents,
+  apiCreateEvent,
+
+  apiListKanban,
+  apiCreateKanban,
+
+  apiListNotes,
+  apiCreateNote,
+  apiUpdateNote,
+  apiDeleteNote,
+
+  apiRegister,
+  apiLogin,
+  apiMe,
+  apiUpdateProfile,
+  apiLogout,
+};
+
+const exported: any = Object.assign(client, apiObject);
+
+try {
+  (globalThis as any).__APP_API__ = exported;
+} catch (e) {
+  /* ignore */
 }
-export async function createLesson(payload: any) {
-  const r = await client.post("/api/lessons", payload);
-  return r.data;
-}
-export async function updateLesson(id: string, payload: any) {
-  const r = await client.put(`/api/lessons/${id}`, payload);
-  return r.data;
-}
-export async function listRaw() {
-  const r = await client.get("/api/raw");
-  return r.data;
-}
+
+export default exported;

@@ -1,7 +1,7 @@
 // src/auth/AuthProvider.tsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { loginApi, meApi, updateProfileApi } from "../api/auth";
-import { apiRegister } from "../api"; // <-- use central client register
+import { apiRegister } from "../api";
 import { getAuthToken, getAuthUser, setAuth, clearAuth } from "./tokenStorage";
 
 type Role = "admin" | "instructor" | "student" | string;
@@ -44,7 +44,6 @@ export const AuthContext = createContext<AuthContextValue | undefined>(
   undefined
 );
 
-/** Type guard for theme */
 function isTheme(value: unknown): value is "light" | "dark" {
   return value === "light" || value === "dark";
 }
@@ -61,13 +60,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       meApi()
         .then((data: { user: any }) => {
           if (!mounted) return;
-          const u = data.user;
+          const u = data?.user ?? null;
           if (u && typeof u.username === "string") {
             const rawTheme = u?.preferences?.theme;
             setUser({
               _id: u._id,
               username: u.username,
-              role: u.role,
+              role: u.role ?? "student",
               email: u.email,
               preferences: {
                 ...(u.preferences ?? {}),
@@ -105,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser({
         _id: data.user._id,
         username: data.user.username,
-        role: data.user.role ?? "",
+        role: data.user.role ?? "student",
         email: data.user.email,
         preferences: {
           ...(data.user.preferences ?? {}),
@@ -121,21 +120,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function register(username: string, email: string, password: string) {
     try {
-      // use the centralized api client so baseURL / proxy / interceptors are honored
       const r = await apiRegister(username, email, password);
-      // apiRegister returns r.data; server returns { token, user } — normalize
       const token = r?.token ?? r?.data?.token;
       const userObj = r?.user ?? r?.data?.user ?? r?.data ?? null;
       if (!token) return { ok: false, error: "Invalid server response" };
 
-      setAuth(token, userObj);
+      // Default role to student if backend didn't set it
+      const normalizedUser = {
+        ...userObj,
+        role: userObj?.role ?? "student",
+      };
+
+      setAuth(token, normalizedUser);
       setToken(token);
       setUser({
-        _id: userObj?._id,
-        username: userObj?.username,
-        role: userObj?.role ?? "",
-        email: userObj?.email,
-        preferences: userObj?.preferences ?? {},
+        _id: normalizedUser?._id,
+        username: normalizedUser?.username,
+        role: normalizedUser?.role ?? "student",
+        email: normalizedUser?.email,
+        preferences: normalizedUser?.preferences ?? {},
       });
 
       return { ok: true };

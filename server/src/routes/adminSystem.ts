@@ -6,10 +6,13 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 const router = express.Router();
 
 /**
- * GET /api/admin/system/status
+ * GET /api/admin/system or GET /api/admin/system/status
  * Returns basic status: uptime, mongo readyState, serverTime
+ *
+ * Both routes are provided so clients that call either /api/admin/system
+ * or /api/admin/system/status receive the same response.
  */
-router.get("/status", requireAuth, requireRole("admin"), async (req, res) => {
+async function getStatusHandler(_req: express.Request, res: express.Response) {
   try {
     const uptime = process.uptime();
     const mongoState = mongoose.connection.readyState; // 0 disconnected, 1 connected
@@ -23,7 +26,13 @@ router.get("/status", requireAuth, requireRole("admin"), async (req, res) => {
     console.error("adminSystem.status error:", err);
     return res.status(500).json({ error: "Failed to get status" });
   }
-});
+}
+
+// Add GET / (so mounted path /api/admin/system will respond)
+router.get("/", requireAuth, requireRole("admin"), getStatusHandler);
+
+// Preserve existing /status route
+router.get("/status", requireAuth, requireRole("admin"), getStatusHandler);
 
 /**
  * POST /api/admin/system/backup
@@ -47,7 +56,7 @@ router.post("/backup", requireAuth, requireRole("admin"), async (req, res) => {
     // pretend some processing...
     return res.json({ ok: true, backup: simulatedBackup });
   } catch (err) {
-    console.error("adminSystem.backup error:", err);
+    console.error("adminSystem.backup error", err);
     return res.status(500).json({ error: "Backup failed" });
   }
 });
