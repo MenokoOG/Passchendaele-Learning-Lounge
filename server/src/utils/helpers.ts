@@ -1,5 +1,9 @@
 // server/src/utils/helpers.ts
 import { Request, Response } from "express";
+import mongoose from "mongoose";
+
+// Type for owner IDs that can be either string or ObjectId
+type OwnerId = string | mongoose.Types.ObjectId | null | undefined;
 
 /**
  * Get the authenticated user ID from the request object
@@ -19,7 +23,7 @@ export function getUserId(req: Request): string | null {
  * @param ownerId - The owner ID from the resource (string or ObjectId)
  * @returns true if user owns the resource
  */
-export function isOwner(req: Request, ownerId: any): boolean {
+export function isOwner(req: Request, ownerId: OwnerId): boolean {
   const userId = getUserId(req);
   if (!userId) return false;
   return String(ownerId) === userId;
@@ -40,7 +44,7 @@ export function hasRole(req: Request, ...roles: string[]): boolean {
  */
 export function isOwnerOrHasRole(
   req: Request,
-  ownerId: any,
+  ownerId: OwnerId,
   ...roles: string[]
 ): boolean {
   return isOwner(req, ownerId) || hasRole(req, ...roles);
@@ -60,9 +64,9 @@ export function sendError(
 /**
  * Standard success response helper
  */
-export function sendSuccess(
+export function sendSuccess<T>(
   res: Response,
-  data: any,
+  data: T,
   statusCode: number = 200
 ): Response {
   return res.status(statusCode).json(data);
@@ -88,7 +92,7 @@ export function requireUser(req: Request, res: Response): string | null {
 export function verifyOwnership(
   req: Request,
   res: Response,
-  ownerId: any,
+  ownerId: OwnerId,
   allowedRoles: string[] = ["admin"]
 ): boolean {
   if (isOwnerOrHasRole(req, ownerId, ...allowedRoles)) {

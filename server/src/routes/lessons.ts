@@ -45,8 +45,7 @@ router.get("/:id", async (req, res) => {
 
     if (!l.published) {
       // if not published require owner or instructor/admin
-      const userId = getUserId(req);
-      if (!userId || (!hasRole(req, "admin", "instructor") && String(l.owner) !== userId)) {
+      if (!isOwnerOrHasRole(req, l.owner, "admin", "instructor")) {
         return sendError(res, 403, "Forbidden");
       }
     }
