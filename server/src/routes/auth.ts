@@ -132,35 +132,4 @@ router.get("/me", requireAuth, async (req, res) => {
   }
 });
 
-/**
- * PUT /api/auth/profile
- * Update current user's profile (convenience for client).
- * Accepts partial user fields (username, email, preferences, password)
- */
-router.put("/profile", requireAuth, async (req, res) => {
-  try {
-    const userId = (req as any).user?.id || (req as any).user?._id;
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
-
-    const { username, email, password, preferences } = req.body ?? {};
-    const data: any = {};
-    if (typeof username === "string") data.username = username;
-    if (typeof email === "string") data.email = email;
-    if (typeof preferences === "object") data.preferences = preferences;
-    if (password) {
-      data.passwordHash = await hashPassword(String(password));
-    }
-
-    const updated = await User.findByIdAndUpdate(userId, data, { new: true })
-      .select("-passwordHash")
-      .lean();
-    if (!updated) return res.status(404).json({ error: "Not found" });
-
-    return res.json({ ok: true, user: updated });
-  } catch (err) {
-    console.error("auth.profile.update error:", err);
-    return res.status(500).json({ error: "Update failed" });
-  }
-});
-
 export default router;
