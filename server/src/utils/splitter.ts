@@ -1,4 +1,3 @@
-// server/src/utils/splitter.ts
 import { load } from "cheerio";
 
 export type Section = {
@@ -10,6 +9,7 @@ export type Section = {
 };
 
 export function countWords(s: string) {
+  if (!s) return 0;
   const m = s.trim().match(/\S+/g);
   return m ? m.length : 0;
 }
@@ -28,6 +28,7 @@ export function splitIntoSections(
   const headings = $("h1,h2,h3,h4,h5,h6").toArray();
   const sections: Section[] = [];
 
+  // If the document has headings, create a section for each heading and the content until the next heading.
   if (headings.length) {
     headings.forEach((h) => {
       const headingText = $(h).text().trim();
@@ -42,10 +43,8 @@ export function splitIntoSections(
       }
       const contentHtml = contentNodes.join("\n");
       const loaded = load(contentHtml);
-      const contentText = loaded.root().text();
-      const text = `${headingText}\n${contentText}`
-        .replace(/\s{2,}/g, " ")
-        .trim();
+      const contentText = loaded.root().text().trim();
+      const text = `${headingText}\n${contentText}`.replace(/\s{2,}/g, " ").trim();
       const words = countWords(text);
       const estSeconds = Math.ceil((words / 200) * 60);
       sections.push({
@@ -56,6 +55,7 @@ export function splitIntoSections(
         estSeconds,
       });
     });
+
     return sections;
   }
 

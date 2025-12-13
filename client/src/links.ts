@@ -1,77 +1,26 @@
+// client/src/links.ts
+// Updated course link list (Python + cybersecurity resources)
+// Replace previous Google links with the user-provided set.
+
 export const LINKS: ReadonlyArray<{ title: string; url: string }> = [
   {
-    title: "Overview (Google for Education)",
-    url: "https://developers.google.com/edu",
+    title: "GeeksforGeeks — Python Programming Language Tutorial",
+    url: "https://www.geeksforgeeks.org/python/python-programming-language-tutorial/",
   },
   {
-    title: "Python (Google: Python Education)",
-    url: "https://developers.google.com/edu/python",
+    title: "Edureka — Ethical Hacking Tools (blog)",
+    url: "https://www.edureka.co/blog/ethical-hacking-tools/",
   },
   {
-    title: "Python Set Up",
-    url: "https://developers.google.com/edu/python/set-up",
+    title: "Edureka — What is Cybersecurity (blog)",
+    url: "https://www.edureka.co/blog/what-is-cybersecurity/",
   },
   {
-    title: "Python Intro",
-    url: "https://developers.google.com/edu/python/introduction",
-  },
-  { title: "Strings", url: "https://developers.google.com/edu/python/strings" },
-  { title: "Lists", url: "https://developers.google.com/edu/python/lists" },
-  { title: "Sorting", url: "https://developers.google.com/edu/python/sorting" },
-  {
-    title: "Dicts and Files",
-    url: "https://developers.google.com/edu/python/dict-files",
+    title: "GeeksforGeeks — Python Projects (Beginner to Advanced)",
+    url: "https://www.geeksforgeeks.org/python/python-projects-beginner-to-advanced/",
   },
   {
-    title: "Regular Expressions",
-    url: "https://developers.google.com/edu/python/regular-expressions",
-  },
-  {
-    title: "Utilities",
-    url: "https://developers.google.com/edu/python/utilities",
-  },
-  {
-    title: "Lecture 1.1 — Introduction, strings (YouTube)",
-    url: "http://www.youtube.com/watch?v=tKTZoB2Vjuk",
-  },
-  {
-    title: "Lecture 1.2 — Lists and sorting (YouTube)",
-    url: "http://www.youtube.com/watch?v=EPYupizJYQI",
-  },
-  {
-    title: "Lecture 1.3 — Dicts and files (YouTube)",
-    url: "http://www.youtube.com/watch?v=haycL41dAhg",
-  },
-  {
-    title: "Lecture 2.1 — Regular expr (YouTube)",
-    url: "http://www.youtube.com/watch?v=kWyoYtvJpe4",
-  },
-  {
-    title: "Lecture 2.2 — Utilities (YouTube)",
-    url: "http://www.youtube.com/watch?v=uKZ8GBKmeDM",
-  },
-  {
-    title: "Lecture 2.3 — Utilities urllib (YouTube)",
-    url: "http://www.youtube.com/watch?v=Nn2KQmVF5Og",
-  },
-  {
-    title: "Lecture 2.4 — Conclusions (YouTube)",
-    url: "http://www.youtube.com/watch?v=IcteAbMC1Ok",
-  },
-  {
-    title: "Basic Exercises",
-    url: "https://developers.google.com/edu/python/exercises/basic",
-  },
-  {
-    title: "Baby Names Exercise",
-    url: "https://developers.google.com/edu/python/exercises/baby-names",
-  },
-  {
-    title: "Copy Special Exercise",
-    url: "https://developers.google.com/edu/python/exercises/copy-special",
-  },
-  {
-    title: "Log Puzzle Exercise",
-    url: "https://developers.google.com/edu/python/exercises/log-puzzle",
+    title: "GeeksforGeeks — Python Data Structures & Algorithms (DSA)",
+    url: "https://www.geeksforgeeks.org/dsa/python-data-structures-and-algorithms/",
   },
 ] as const;

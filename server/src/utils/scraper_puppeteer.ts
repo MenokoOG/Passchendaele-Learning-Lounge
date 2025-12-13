@@ -1,4 +1,3 @@
-// server/src/utils/scraper_puppeteer.ts
 import puppeteer from "puppeteer";
 import { splitIntoSections } from "./splitter.js";
 import { JSDOM } from "jsdom";
@@ -14,7 +13,7 @@ async function getBrowser() {
 
   // Launch once and reuse
   _browser = await puppeteer.launch({
-    headless: "new", // opt-in to new headless mode (removes deprecation warning)
+    headless: "new",
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
     ...launchArgs,
   });
@@ -59,6 +58,9 @@ export default async function fetchAndExtract(
       timeout: 60_000,
     });
 
+    // small deterministic pause to allow JS-rendered bits to settle (uses any cast to satisfy TS where waitForTimeout may not exist)
+    await (page as any).waitForTimeout?.(250);
+
     // trim UI / noise (keeps content)
     await page.evaluate(() => {
       const removeSelectors = [
@@ -85,6 +87,8 @@ export default async function fetchAndExtract(
         "#content",
         ".devsite-article",
         ".devsite-content",
+        ".article",
+        ".blog-post",
       ];
       for (const s of selectors) {
         const el = document.querySelector(s);
@@ -95,6 +99,7 @@ export default async function fetchAndExtract(
         )
           return el.innerHTML;
       }
+      // fallback to body
       return document.body ? document.body.innerHTML : "";
     });
 
@@ -107,7 +112,7 @@ export default async function fetchAndExtract(
     return { url, title, contentHtml, text, sections };
   } catch (err) {
     try {
-      await page.close();
+      if (!page.isClosed()) await page.close();
     } catch {}
     throw err;
   }

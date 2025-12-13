@@ -17,6 +17,7 @@ import FilesPage from "./pages/Files";
 import KanbanPage from "./pages/Kanban";
 import Landing from "./pages/Landing";
 import RegisterPage from "./pages/Register";
+import AccessibilityPage from "./pages/Accessibility"; // NEW
 
 // admin pages (explicit)
 import AdminIngestPage from "./pages/admin/Ingest";
@@ -167,6 +168,9 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/lesson/:id" element={<LessonPage />} />
+
+          {/* Accessibility route */}
+          <Route path="/accessibility" element={<AccessibilityPage />} />
 
           {/* top-level aliases for convenience (tiles/links) */}
           <Route

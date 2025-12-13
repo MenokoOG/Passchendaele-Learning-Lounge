@@ -1,32 +1,41 @@
 // server/src/routes/scrape.ts
 import express from "express";
+import { ScrapeJob } from "../models/ScrapeJob.js";
 import { RawCourse } from "../models/RawCourse.js";
 import fetchAndExtract from "../utils/scraper_puppeteer.js";
+import { extractLicenseFromText } from "../utils/extract_license.js";
 import { isUrlAllowed } from "../utils/robots_check.js";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
 /**
  * POST /api/scrape
- * Body: { links: [{ title, url, usePuppeteer? }], usePuppeteer?: boolean }
+ * Body:
+ *  { links: [{ title?, url }], usePuppeteer?, crawl?, delayMs?, randomize?, maxPerSite? , processNow? }
  *
- * For each link:
- *  - check robots.txt (isUrlAllowed)
- *  - fetch via fetchAndExtract(url, { usePuppeteer })
- *  - save into RawCourse (metadata.scraped = true)
+ * Behavior:
+ *  - Inserts ScrapeJob(s) into Mongo (unique by url) with status 'pending'
+ *  - If processNow:true then performs fetch+save inline synchronously and returns saved RawCourse(s)
  *
- * Returns: { results: [{ url, status, id?, error? }] }
+ * Response:
+ *  { results: [ { url, status, jobId?, rawId?, error? } ] }
  */
 router.post("/", async (req, res) => {
   const body = req.body || {};
   const links = Array.isArray(body.links) ? body.links : [];
   const defaultUsePuppeteer = !!body.usePuppeteer;
+  const defaultCrawl = !!body.crawl;
+  const processNow = !!body.processNow;
+  const delayMs = Number(body.delayMs ?? 1000);
+  const randomize = !!body.randomize;
+  const maxPerSite = Number(body.maxPerSite ?? 25);
 
   if (!links.length) {
     return res.status(400).json({ error: "No links provided" });
   }
 
-  const results: Array<any> = [];
+  const results: any[] = [];
 
   for (const l of links) {
     const title = l.title || "";
@@ -37,56 +46,84 @@ router.post("/", async (req, res) => {
     }
 
     try {
-      // robots.txt check
-      const allowed = await isUrlAllowed(url);
+      // best-effort robots check. If robots denies, we still create job but mark as blocked.
+      let allowed = true;
+      try {
+        allowed = await isUrlAllowed(url);
+      } catch (robotErr) {
+        // ignore robot errors (conservative: allow)
+        allowed = true;
+      }
       if (!allowed) {
         results.push({ url, status: "blocked_by_robots" });
         continue;
       }
 
-      // decide whether to use puppeteer per-link or default
-      const useP =
-        typeof l.usePuppeteer === "boolean"
-          ? l.usePuppeteer
-          : defaultUsePuppeteer;
-
-      // fetch & extract (this function should return { ok, title, html, text, sections, contentHtml? })
-      const fetched = await fetchAndExtract(url, { usePuppeteer: useP });
-
-      // If fetchAndExtract returns an object with ok false, mark as failed
-      if (!fetched || (typeof fetched === "object" && fetched.ok === false)) {
-        results.push({
-          url,
-          status: "fetch_failed",
-          error: "fetch returned empty or failure",
+      if (processNow) {
+        // inline processing (synchronous) — useful for quick testing without worker
+        const fetched = await fetchAndExtract(url, {
+          usePuppeteer: defaultUsePuppeteer,
         });
+        const licenseFromText = extractLicenseFromText(
+          String(fetched.text || "")
+        );
+        let licenseFromHtml: string | null = null;
+        if (!licenseFromText && fetched.contentHtml) {
+          licenseFromHtml = extractLicenseFromText(
+            (fetched.contentHtml || "").replace(/<[^>]+>/g, " ")
+          );
+        }
+        const licenseText = licenseFromText || licenseFromHtml || null;
+        const licenseCaptured = !!licenseText;
+
+        const doc = new RawCourse({
+          title: (fetched.title || title || url).slice(0, 300),
+          url,
+          fetchedAt: new Date(),
+          fetchedBy: "inline-scrape-route",
+          contentHtml: fetched.contentHtml || null,
+          text: fetched.text || null,
+          sections: fetched.sections || [],
+          metadata: {
+            scraped: true,
+            usePuppeteer: defaultUsePuppeteer,
+            sourceTool: "inline-scrape-route",
+            fetchedAtRaw: new Date().toISOString(),
+            licenseCaptured,
+            licenseText,
+          },
+        });
+        await doc.save();
+        results.push({ url, status: "saved", rawId: doc._id });
         continue;
       }
 
-      const doc = new RawCourse({
-        title: (fetched.title || title || url).slice(0, 300),
-        url,
-        fetchedAt: new Date(),
-        fetchedBy: "scrape-route",
-        contentHtml:
-          (fetched as any).contentHtml || (fetched as any).html || null,
-        text: (fetched as any).text || null,
-        sections: (fetched as any).sections || [],
-        metadata: {
-          scraped: true,
-          usePuppeteer: useP,
-          sourceTool: "scrape-route",
+      // insert job (upsert so repeated calls won't produce duplicate errors)
+      const jobDoc = await ScrapeJob.findOneAndUpdate(
+        { url },
+        {
+          $setOnInsert: {
+            title,
+            usePuppeteer: defaultUsePuppeteer,
+            crawl: defaultCrawl,
+            delayMs,
+            randomize,
+            maxPerSite,
+            status: "pending",
+            attempts: 0,
+            metadata: {},
+          },
+          $set: { updatedAt: new Date() },
         },
-      });
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      ).lean();
 
-      await doc.save();
-      results.push({ url, status: "saved", id: doc._id });
+      results.push({ url, status: "queued", jobId: jobDoc?._id ?? null });
     } catch (err: any) {
-      console.error("scrape error for", url, err?.message ?? err);
       results.push({
         url,
         status: "error",
-        error: String(err?.message ?? err),
+        error: err?.message ?? String(err),
       });
     }
   }

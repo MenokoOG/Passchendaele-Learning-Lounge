@@ -355,3 +355,54 @@ img {
   height: auto;
   display: block;
 }
+
+/* append to src/index.css */
+
+/* Reader-specific runtime overrides */
+:root {
+  --reader-line-height: 170%;
+  --reader-font-family: inherit;
+  --type-base: clamp(0.95rem, 0.9rem + 0.3vw, 1.05rem);
+}
+
+/* apply easy-reading tweaks when enabled */
+html.easy-reading .prose {
+  max-width: 70ch;
+  line-height: calc(var(--reader-line-height) / 100);
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+
+/* add bigger paragraph spacing for easier scanning */
+html.easy-reading .prose p {
+  margin-bottom: 1rem;
+}
+
+/* nice, gentle background for easy-reading */
+html.easy-reading body {
+  background: linear-gradient(
+    180deg,
+    var(--surface-bg),
+    var(--surface-contrast)
+  );
+}
+
+/* dyslexic font fallback variable usage */
+.prose {
+  font-family: var(--reader-font-family, inherit);
+}
+
+/* Ensure code blocks remain readable */
+html.easy-reading pre,
+html.easy-reading code {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* reduce visual clutter in easy-reading mode */
+html.easy-reading img {
+  box-shadow: none;
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+}

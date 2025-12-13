@@ -1,3 +1,4 @@
+// src/pages/Lesson.tsx
 import React, {
   useCallback,
   useEffect,
@@ -10,6 +11,7 @@ import { getRaw, rewriteRaw, listRaw } from "../api/api";
 import Toast from "../components/Toast";
 import PrettyContent from "../components/PrettyContent";
 import { useAuth } from "../auth/AuthProvider";
+import LessonReader from "../components/LessonReader";
 
 /* ---------- helpers (sanitization + video extraction) ---------- */
 
@@ -463,16 +465,12 @@ export default function LessonPage() {
                 </div>
               </div>
 
-              {doc.contentHtml ? (
-                <div
-                  className="prose dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: enhancedHtml }}
-                />
-              ) : (
-                <div className="card-surface p-3 rounded border border-surface-border">
-                  <PrettyContent text={doc.text || "(no text)"} />
-                </div>
-              )}
+              {/* Use LessonReader here: it provides simplified view + original view toggles */}
+              <LessonReader
+                rawId={String(doc._id)}
+                initialHtml={doc.contentHtml ? enhancedHtml : undefined}
+                initialText={extractTextForReader()}
+              />
             </section>
 
             {rewritten && (
