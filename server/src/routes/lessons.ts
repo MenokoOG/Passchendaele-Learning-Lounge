@@ -2,6 +2,13 @@
 import express from "express";
 import mongoose from "mongoose";
 import { requireAuth, requireRole } from "../middleware/auth.js";
+import {
+  getUserId,
+  hasRole,
+  isOwnerOrHasRole,
+  sendError,
+  sendSuccess,
+} from "../utils/helpers.js";
 
 const router = express.Router();
 
@@ -32,20 +39,17 @@ router.get("/", async (req, res) => {
   try {
     // if no auth, show published only
     const authUser = (req as any).user;
-    if (
-      authUser &&
-      (authUser.role === "admin" || authUser.role === "instructor")
-    ) {
+    if (authUser && hasRole(req, "admin", "instructor")) {
       const all = await Lesson.find().sort({ createdAt: -1 }).lean();
-      return res.json(all);
+      return sendSuccess(res, all);
     }
     const published = await Lesson.find({ published: true })
       .sort({ createdAt: -1 })
       .lean();
-    return res.json(published);
+    return sendSuccess(res, published);
   } catch (err) {
     console.error("lessons.list error:", err);
-    return res.status(500).json({ error: "Failed to list lessons" });
+    return sendError(res, 500, "Failed to list lessons");
   }
 });
 
@@ -55,24 +59,20 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const l = await Lesson.findById(req.params.id).lean();
-    if (!l || Array.isArray(l))
-      return res.status(404).json({ error: "Not found" });
+    if (!l || Array.isArray(l)) return sendError(res, 404, "Not found");
+
     if (!l.published) {
       // if not published require owner or instructor/admin
       const u = (req as any).user;
-      if (
-        !u ||
-        (u.role !== "admin" &&
-          u.role !== "instructor" &&
-          String(l.owner) !== String(u.id))
-      ) {
-        return res.status(403).json({ error: "Forbidden" });
+      const userId = getUserId(req);
+      if (!u || (!hasRole(req, "admin", "instructor") && String(l.owner) !== userId)) {
+        return sendError(res, 403, "Forbidden");
       }
     }
-    return res.json(l);
+    return sendSuccess(res, l);
   } catch (err) {
     console.error("lessons.get error:", err);
-    return res.status(500).json({ error: "Failed to get lesson" });
+    return sendError(res, 500, "Failed to get lesson");
   }
 });
 
@@ -84,8 +84,9 @@ router.get("/:id", async (req, res) => {
 router.post("/", requireAuth, requireRole("instructor"), async (req, res) => {
   try {
     const { title, slug, summary, contentHtml, published } = req.body || {};
-    if (!title) return res.status(400).json({ error: "title required" });
-    const ownerId = (req as any).user.id;
+    if (!title) return sendError(res, 400, "title required");
+
+    const ownerId = getUserId(req);
     const l = new Lesson({
       title,
       slug,
@@ -95,10 +96,10 @@ router.post("/", requireAuth, requireRole("instructor"), async (req, res) => {
       owner: ownerId,
     });
     await l.save();
-    return res.json({ ok: true, lesson: l });
+    return sendSuccess(res, { ok: true, lesson: l });
   } catch (err) {
     console.error("lessons.create error:", err);
-    return res.status(500).json({ error: "Failed to create lesson" });
+    return sendError(res, 500, "Failed to create lesson");
   }
 });
 
@@ -109,21 +110,20 @@ router.post("/", requireAuth, requireRole("instructor"), async (req, res) => {
 router.put("/:id", requireAuth, async (req, res) => {
   try {
     const l = await Lesson.findById(req.params.id);
-    if (!l) return res.status(404).json({ error: "Not found" });
-    const u = (req as any).user;
-    if (!u) return res.status(401).json({ error: "Unauthorized" });
-    const isOwner = String(l.owner) === String(u.id);
-    if (!(isOwner || u.role === "admin" || u.role === "instructor")) {
-      return res.status(403).json({ error: "Forbidden" });
+    if (!l) return sendError(res, 404, "Not found");
+
+    if (!isOwnerOrHasRole(req, l.owner, "admin", "instructor")) {
+      return sendError(res, 403, "Forbidden");
     }
+
     ["title", "slug", "summary", "contentHtml", "published"].forEach((k) => {
       if (req.body[k] !== undefined) (l as any)[k] = req.body[k];
     });
     await l.save();
-    return res.json({ ok: true, lesson: l });
+    return sendSuccess(res, { ok: true, lesson: l });
   } catch (err) {
     console.error("lessons.update error:", err);
-    return res.status(500).json({ error: "Failed to update lesson" });
+    return sendError(res, 500, "Failed to update lesson");
   }
 });
 
@@ -133,18 +133,17 @@ router.put("/:id", requireAuth, async (req, res) => {
 router.delete("/:id", requireAuth, async (req, res) => {
   try {
     const l = await Lesson.findById(req.params.id);
-    if (!l) return res.status(404).json({ error: "Not found" });
-    const u = (req as any).user;
-    if (!u) return res.status(401).json({ error: "Unauthorized" });
-    const isOwner = String(l.owner) === String(u.id);
-    if (!(isOwner || u.role === "admin")) {
-      return res.status(403).json({ error: "Forbidden" });
+    if (!l) return sendError(res, 404, "Not found");
+
+    if (!isOwnerOrHasRole(req, l.owner, "admin")) {
+      return sendError(res, 403, "Forbidden");
     }
+
     await l.deleteOne();
-    return res.json({ ok: true });
+    return sendSuccess(res, { ok: true });
   } catch (err) {
     console.error("lessons.delete error:", err);
-    return res.status(500).json({ error: "Failed to delete lesson" });
+    return sendError(res, 500, "Failed to delete lesson");
   }
 });
 

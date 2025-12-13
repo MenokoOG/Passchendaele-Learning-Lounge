@@ -20,6 +20,7 @@ import kanbanRouter from "./routes/kanban.js";
 import calendarRouter from "./routes/calendar.js";
 import filesRouter from "./routes/files.js";
 import dashboardRouter from "./routes/dashboard.js";
+import lessonsRouter from "./routes/lessons.js";
 
 async function main() {
   if (!MONGO_URI) {
@@ -46,6 +47,7 @@ async function main() {
   app.use("/api/raw", rawRouter);
   app.use("/api/scrape", scrapeRouter);
   app.use("/api/ingest", ingestRouter);
+  app.use("/api/lessons", lessonsRouter);
   app.use("/api/notes", notesRouter);
   app.use("/api/kanban", kanbanRouter);
 

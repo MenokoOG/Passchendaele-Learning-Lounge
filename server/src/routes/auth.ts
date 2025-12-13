@@ -1,8 +1,7 @@
 // server/src/routes/auth.ts
 import express from "express";
-import bcrypt from "bcryptjs";
 import { User } from "../models/User.js";
-import { createTokenForUser } from "../utils/auth.js";
+import { createTokenForUser, hashPassword, comparePassword } from "../utils/auth.js";
 import { requireAuth } from "../middleware/auth.js"; // make sure this exists and sets req.user
 
 const router = express.Router();
@@ -27,7 +26,7 @@ router.post("/register", async (req, res) => {
       return res.status(409).json({ error: "User already exists" });
     }
 
-    const passwordHash = await bcrypt.hash(String(password), 10);
+    const passwordHash = await hashPassword(String(password));
     const user = await User.create({
       username,
       email: String(email).toLowerCase(),
@@ -83,7 +82,7 @@ router.post("/login", async (req, res) => {
         .json({ error: "Account not configured for password login" });
     }
 
-    const ok = await bcrypt.compare(
+    const ok = await comparePassword(
       String(password),
       String(user.passwordHash)
     );
@@ -149,8 +148,7 @@ router.put("/profile", requireAuth, async (req, res) => {
     if (typeof email === "string") data.email = email;
     if (typeof preferences === "object") data.preferences = preferences;
     if (password) {
-      const salt = await bcrypt.genSalt(10);
-      data.passwordHash = await bcrypt.hash(String(password), salt);
+      data.passwordHash = await hashPassword(String(password));
     }
 
     const updated = await User.findByIdAndUpdate(userId, data, { new: true })

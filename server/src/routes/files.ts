@@ -6,6 +6,7 @@ import fs from "fs";
 import { FileMeta } from "../models/File.js";
 import { requireAuth } from "../middleware/auth.js";
 import { UPLOAD_DIR } from "../config.js";
+import { requireUser, sendError, sendSuccess } from "../utils/helpers.js";
 
 const router = express.Router();
 
@@ -22,23 +23,30 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
 
 router.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "File required" });
+  const userId = requireUser(req, res);
+  if (!userId) return;
+
+  if (!req.file) return sendError(res, 400, "File required");
+
   const meta = new FileMeta({
     originalName: req.file.originalname,
     mimeType: req.file.mimetype,
     size: req.file.size,
     path: `/uploads/${req.file.filename}`,
-    uploader: req.user.id,
+    uploader: userId,
   });
   await meta.save();
-  res.json({ ok: true, file: meta });
+  sendSuccess(res, { ok: true, file: meta });
 });
 
 router.get("/", requireAuth, async (req, res) => {
-  const files = await FileMeta.find({ uploader: req.user.id }).sort({
+  const userId = requireUser(req, res);
+  if (!userId) return;
+
+  const files = await FileMeta.find({ uploader: userId }).sort({
     createdAt: -1,
   });
-  res.json(files);
+  sendSuccess(res, files);
 });
 
 export default router;
