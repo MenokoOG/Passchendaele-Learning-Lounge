@@ -8,7 +8,9 @@ import { Request, Response } from "express";
 export function getUserId(req: Request): string | null {
   const user = (req as any).user;
   if (!user) return null;
-  return String(user.id || user._id || "");
+  const id = String(user.id || user._id || "");
+  // Return null if empty string instead of empty string for proper type safety
+  return id.length > 0 ? id : null;
 }
 
 /**

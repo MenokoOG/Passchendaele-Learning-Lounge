@@ -1,7 +1,7 @@
 // server/src/routes/lessons.ts
 import express from "express";
-import mongoose from "mongoose";
 import { requireAuth, requireRole } from "../middleware/auth.js";
+import { Lesson } from "../models/Lesson.js";
 import {
   getUserId,
   hasRole,
@@ -11,24 +11,6 @@ import {
 } from "../utils/helpers.js";
 
 const router = express.Router();
-
-/**
- * Minimal Lesson schema (keeps compatible shape with frontend)
- * If you already have a Lesson model in /models, you can swap to import it instead.
- */
-const LessonSchema = new mongoose.Schema(
-  {
-    title: { type: String, required: true },
-    slug: { type: String, index: true, unique: true, sparse: true },
-    summary: String,
-    contentHtml: String,
-    owner: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    published: { type: Boolean, default: false },
-  },
-  { timestamps: true }
-);
-
-const Lesson = mongoose.models.Lesson || mongoose.model("Lesson", LessonSchema);
 
 /**
  * GET /api/lessons
@@ -63,9 +45,8 @@ router.get("/:id", async (req, res) => {
 
     if (!l.published) {
       // if not published require owner or instructor/admin
-      const u = (req as any).user;
       const userId = getUserId(req);
-      if (!u || (!hasRole(req, "admin", "instructor") && String(l.owner) !== userId)) {
+      if (!userId || (!hasRole(req, "admin", "instructor") && String(l.owner) !== userId)) {
         return sendError(res, 403, "Forbidden");
       }
     }
