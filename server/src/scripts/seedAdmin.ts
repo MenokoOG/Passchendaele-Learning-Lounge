@@ -1,68 +1,58 @@
 // server/src/scripts/seed_admin.ts
 /**
- * Creates an admin user (one-off seed).
+ * Seed script to create an admin user (works even if project doesn't export a User model).
  *
  * Usage:
- *   npx ts-node src/scripts/seed_admin.ts --username=admin --email=admin@example.com --password=supersecret --adminSecret=optional_secret
+ *   npx ts-node -r dotenv/config src/scripts/seed_admin.ts
  *
- * If ADMIN_SECRET is configured in .env, the script requires the same secret to run.
+ * Will insert into the 'users' collection with fields:
+ *  { email, name, passwordHash, roles: ['admin'], createdAt }
+ *
+ * NOTE: Adjust email/password below or pass via env:
+ *   SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD
  */
+import dotenv from "dotenv";
+dotenv.config();
+
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-import { User } from "../models/User.js";
-import { MONGO_URI, ADMIN_SECRET } from "../config.js";
 
-function parseFlag(name: string) {
-  const arg = process.argv.find((a) => a.startsWith(`--${name}=`));
-  return arg ? arg.replace(`--${name}=`, "") : null;
-}
+const MONGO_URI = process.env.MONGO_URI ?? process.env.MONGODB_URI ?? "";
+const email = process.env.SEED_ADMIN_EMAIL ?? "admin@example.com";
+const password = process.env.SEED_ADMIN_PASSWORD ?? "adminpass123";
 
 async function main() {
-  const username = parseFlag("username") || "admin";
-  const email = parseFlag("email") || "admin@example.com";
-  const password = parseFlag("password") || "admin-password-CHANGE_ME!";
-  const secretArg = parseFlag("adminSecret");
-
-  if (ADMIN_SECRET && ADMIN_SECRET !== (secretArg ?? ADMIN_SECRET)) {
-    console.error("ADMIN_SECRET is set in environment. Provide matching --adminSecret to run script.");
-    process.exit(2);
-  }
-
   if (!MONGO_URI) {
-    console.error("MONGO_URI is not set. Set MONGO_URI in .env and retry.");
-    process.exit(2);
+    console.error("MONGO_URI not set.");
+    process.exit(1);
   }
-
   await mongoose.connect(MONGO_URI, {});
-  console.log("Connected to MongoDB.");
+  console.log("Connected to Mongo.");
 
-  // check for existing admin
-  const existing = await User.findOne({ $or: [{ username }, { email: email.toLowerCase() }] }).lean();
+  // use a flexible schema so we don't require the project's User model
+  const UserModel = mongoose.models.User || mongoose.model("User", new mongoose.Schema({}, { strict: false }));
+
+  const existing = await UserModel.findOne({ email }).lean();
   if (existing) {
-    console.log("User already exists:", existing._id, existing.username, existing.email);
-    await mongoose.disconnect();
+    const id = Array.isArray(existing) ? existing[0]?._id : existing._id;
+    console.log("Admin already exists:", id);
     process.exit(0);
   }
 
-  const salt = await bcrypt.genSalt(10);
-  const hash = await bcrypt.hash(String(password), salt);
-
-  const u = new User({
-    username,
-    email: String(email).toLowerCase(),
+  const hash = await bcrypt.hash(password, 10);
+  const u = await UserModel.create({
+    email,
+    name: "Admin",
     passwordHash: hash,
-    role: "admin",
-    preferences: {},
+    roles: ["admin"],
+    createdAt: new Date(),
   });
 
-  await u.save();
-  console.log("Created admin user:", { id: u._id.toString(), username: u.username, email: u.email });
-  await mongoose.disconnect();
+  console.log("Created admin user:", { email, id: u._id, password });
   process.exit(0);
 }
 
 main().catch((err) => {
-  console.error("Failed to create admin:", err?.message ?? err);
-  try { mongoose.disconnect(); } catch {}
-  process.exit(1);
+  console.error(err);
+  process.exit(2);
 });

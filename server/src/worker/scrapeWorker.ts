@@ -1,51 +1,38 @@
+// server/src/worker/scrapeWorker.ts
 /**
- * Worker that consumes the 'scrape' queue and saves RawCourse docs.
+ * Mongo-backed scrape worker.
+ * - Atomically claims one pending job with findOneAndUpdate
+ * - Runs fetchAndExtract, extracts license, saves RawCourse
+ * - If job.crawl true, discovers internal links and inserts new ScrapeJobs (non-recursive)
  *
  * Usage (dev):
- *   npx ts-node -r dotenv/config src/worker/scrapeWorker.ts
+ *  npx ts-node -r dotenv/config src/worker/scrapeWorker.ts
  *
- * Or build and run compiled JS in production:
- *   node dist/worker/scrapeWorker.js
+ * Or run compiled JS:
+ *  node dist/worker/scrapeWorker.js
  */
 import dotenv from "dotenv";
 dotenv.config();
 
-import Queue from "bull";
 import mongoose from "mongoose";
+import { ScrapeJob } from "../models/ScrapeJob.js";
 import { RawCourse } from "../models/RawCourse.js";
 import fetchAndExtract from "../utils/scraper_puppeteer.js";
-import { isUrlAllowed } from "../utils/robots_check.js";
 import { extractLicenseFromText } from "../utils/extract_license.js";
-import { load, type Cheerio, type Element } from "cheerio";
+import { load } from "cheerio";
 
-const REDIS_URL = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
 const MONGO_URI = process.env.MONGO_URI ?? process.env.MONGODB_URI ?? "";
+const POLL_INTERVAL_MS = Number(process.env.SCRAPE_POLL_INTERVAL_MS ?? 2000);
+const WORKER_ID = `worker-${process.pid}`;
 
-// Worker concurrency
-const CONCURRENCY = Number(process.env.SCRAPE_WORKER_CONCURRENCY ?? 1);
-
-// Queue
-const scrapeQueue = new Queue("scrape", REDIS_URL);
-
-// Local in-worker seen cache (keeps worker from reprocessing same URL repeatedly)
-const recentSeen = new Map<string, number>();
-const RECENT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
-
-function markSeen(url: string) {
-  recentSeen.set(url, Date.now());
-}
-function seenRecently(url: string) {
-  const t = recentSeen.get(url);
-  if (!t) return false;
-  if (Date.now() - t > RECENT_TTL_MS) {
-    recentSeen.delete(url);
-    return false;
+async function ensureDbConnected() {
+  if (mongoose.connection.readyState === 1) return;
+  if (!MONGO_URI) {
+    console.error("MONGO_URI not set. Worker cannot connect to DB.");
+    process.exit(1);
   }
-  return true;
-}
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
+  await mongoose.connect(MONGO_URI, {});
+  console.log("Worker connected to MongoDB.");
 }
 
 function isValidHttpHref(href: string | null | undefined) {
@@ -63,40 +50,36 @@ function isValidHttpHref(href: string | null | undefined) {
 function extractLinksFromHtml(html: string, baseUrl: string, maxLinks = 25) {
   const $ = load(html || "<body></body>");
   const candidates = new Map<string, string>();
-  let base: URL;
+  let baseHost = "";
   try {
-    base = new URL(baseUrl);
+    baseHost = new URL(baseUrl).hostname;
   } catch {
-    // invalid base -> no links
-    return [];
+    baseHost = "";
   }
-  const baseHost = base.hostname;
 
   const selectors = ["article", "main", "#content", ".content", ".article", ".post", ".entry"];
-  let area: Cheerio<Element> | null = null;
+  let area = null as any;
   for (const s of selectors) {
     const el = $(s);
     if (el && el.length && el.text().trim().length > 50) {
-      area = el as Cheerio<Element>;
+      area = el;
       break;
     }
   }
-  const root: Cheerio<Element> = area || ($("body") as Cheerio<Element>);
+  const root = area || $("body");
 
-  // primary pass: scoped area
-  root.find("a[href]").each((_: number, el: Element) => {
-    const hrefRaw = $(el).attr("href");
-    if (!isValidHttpHref(hrefRaw)) return;
-    const href = String(hrefRaw).trim(); // narrow to string
+  root.find("a[href]").each((_: any, el: any) => {
+    const href = $(el).attr("href");
+    if (!isValidHttpHref(href)) return;
     let absolute: string;
     try {
-      absolute = new URL(href, baseUrl).toString();
+      absolute = new URL(href as string, baseUrl).toString();
     } catch {
       return;
     }
     try {
       const u = new URL(absolute);
-      if (u.hostname !== baseHost) return;
+      if (baseHost && u.hostname !== baseHost) return;
       u.hash = "";
       absolute = u.toString();
     } catch {
@@ -108,21 +91,19 @@ function extractLinksFromHtml(html: string, baseUrl: string, maxLinks = 25) {
     }
   });
 
-  // fallback to global anchors if none found in scoped area
   if (candidates.size === 0) {
-    $("a[href]").each((_: number, el: Element) => {
-      const hrefRaw = $(el).attr("href");
-      if (!isValidHttpHref(hrefRaw)) return;
-      const href = String(hrefRaw).trim();
+    $("a[href]").each((_, el) => {
+      const href = $(el).attr("href");
+      if (!isValidHttpHref(href)) return;
       let absolute: string;
       try {
-        absolute = new URL(href, baseUrl).toString();
+        absolute = new URL(href as string, baseUrl).toString();
       } catch {
         return;
       }
       try {
         const u = new URL(absolute);
-        if (u.hostname !== baseHost) return;
+        if (baseHost && u.hostname !== baseHost) return;
         u.hash = "";
         absolute = u.toString();
       } catch {
@@ -145,49 +126,40 @@ function extractLinksFromHtml(html: string, baseUrl: string, maxLinks = 25) {
   return out;
 }
 
-async function ensureDbConnected() {
-  if (mongoose.connection.readyState === 1) return;
-  if (!MONGO_URI) {
-    console.error("MONGO_URI not set. Worker cannot connect to DB.");
-    process.exit(1);
-  }
-  await mongoose.connect(MONGO_URI, {});
-  console.log("Worker connected to MongoDB.");
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
-async function handleJob(job: any) {
-  const data = job.data || {};
-  const url = String(data.url || "").trim();
-  if (!url) {
-    console.warn("Job missing url:", job.id);
-    return { ok: false, reason: "missing_url" };
-  }
-  if (seenRecently(url)) {
-    return { ok: true, status: "recently_seen_cache_skip", url };
-  }
+async function processOneJob() {
+  // Claim a pending job atomically: set status->processing and lockedUntil to avoid races.
+  const now = new Date();
+  const lockUntil = new Date(Date.now() + 60 * 1000); // give 60s to process (extend if needed)
+  const job = await ScrapeJob.findOneAndUpdate(
+    { status: "pending", $or: [{ lockedUntil: null }, { lockedUntil: { $lt: new Date() } }] },
+    { $set: { status: "processing", lockedUntil: lockUntil, updatedAt: new Date() }, $inc: { attempts: 1 } },
+    { sort: { createdAt: 1 }, returnDocument: "after" }
+  ).lean();
 
-  // polite delay between jobs if provided
-  const delayMs = Number(data.delayMs ?? 1000);
-  const randomize = !!data.randomize;
-  const jitter = randomize ? Math.floor(Math.random() * delayMs) : 0;
-  const waitMs = delayMs + jitter;
+  if (!job) return false;
+
+  const jobId = (job as any)._id;
+  const url = String(job.url || "");
+  console.log(`[${WORKER_ID}] Claimed job ${jobId} -> ${url}`);
 
   try {
     // robots check (best-effort)
     try {
-      const allowed = await isUrlAllowed(url);
+      const allowed = await (await import("../utils/robots_check.js")).isUrlAllowed(url);
       if (!allowed) {
-        markSeen(url);
-        return { ok: false, status: "blocked_by_robots", url };
+        await ScrapeJob.findByIdAndUpdate(jobId, { $set: { status: "failed", lastError: "blocked_by_robots", updatedAt: new Date() } });
+        console.warn(`[${WORKER_ID}] blocked by robots: ${url}`);
+        return true;
       }
-    } catch (rErr) {
-      const msg = (rErr as any)?.message ?? rErr;
-      console.warn("robots check failed (continuing):", url, msg);
+    } catch (robotErr: any) {
+      // ignore robot errors
     }
 
-    // fetch page (puppeteer or http; fetchAndExtract will fall back)
-    const usePuppeteer = !!data.usePuppeteer;
-    const fetched = await fetchAndExtract(url, { usePuppeteer });
+    const fetched = await fetchAndExtract(url, { usePuppeteer: !!job.usePuppeteer });
 
     // license extraction
     const licenseFromText = extractLicenseFromText(String(fetched.text || ""));
@@ -195,21 +167,20 @@ async function handleJob(job: any) {
     if (!licenseFromText && fetched.contentHtml) {
       licenseFromHtml = extractLicenseFromText((fetched.contentHtml || "").replace(/<[^>]+>/g, " "));
     }
-    const licenseCaptured = !!(licenseFromText || licenseFromHtml);
     const licenseText = licenseFromText || licenseFromHtml || null;
+    const licenseCaptured = !!licenseText;
 
-    // Build doc
-    const doc = {
-      title: (fetched.title || data.title || url).slice(0, 300),
+    const doc: any = {
+      title: (fetched.title || job.title || url).slice(0, 300),
       url,
       fetchedAt: new Date(),
-      fetchedBy: job.id ? `scrape-worker-job-${job.id}` : "scrape-worker",
+      fetchedBy: `scrape-worker-${WORKER_ID}`,
       contentHtml: fetched.contentHtml || null,
       text: fetched.text || null,
       sections: fetched.sections || [],
       metadata: {
         scraped: true,
-        usePuppeteer,
+        usePuppeteer: !!job.usePuppeteer,
         sourceTool: "scrape-worker",
         fetchedAtRaw: new Date().toISOString(),
         licenseCaptured,
@@ -220,107 +191,104 @@ async function handleJob(job: any) {
     // Try insert first; if duplicate-key -> update existing doc with merged metadata
     try {
       const created = await RawCourse.create(doc);
-      markSeen(url);
-      console.log("Saved RawCourse:", created._id.toString(), url);
+      await ScrapeJob.findByIdAndUpdate(jobId, { $set: { status: "done", resultRawCourseId: created._id, updatedAt: new Date() } });
+      console.log(`[${WORKER_ID}] Saved RawCourse for ${url}`);
     } catch (err: any) {
-      // Mongo duplicate key -> update metadata instead of failing
-      if (err && (err.code === 11000 || (err.message && (err.message as string).includes("E11000")))) {
-        console.warn("Duplicate URL on insert — updating metadata instead:", url);
+      // if duplicate key on url (already saved), update metadata on existing
+      if (err && ((err.code === 11000) || (String(err.message).includes("E11000")))) {
         const existing = await RawCourse.findOne({ url }).exec();
         if (existing) {
           existing.title = existing.title || doc.title;
           existing.contentHtml = existing.contentHtml || doc.contentHtml;
           existing.text = existing.text || doc.text;
-          existing.sections = existing.sections && existing.sections.length ? existing.sections : doc.sections;
+          existing.sections = (existing.sections && existing.sections.length) ? existing.sections : doc.sections;
           existing.metadata = {
             ...(existing.metadata || {}),
             ...(doc.metadata || {}),
             lastWorkerUpdate: new Date().toISOString(),
           };
           await existing.save();
-          markSeen(url);
+          await ScrapeJob.findByIdAndUpdate(jobId, { $set: { status: "done", resultRawCourseId: existing._id, updatedAt: new Date() } });
+          console.log(`[${WORKER_ID}] Merged metadata into existing RawCourse for ${url}`);
+        } else {
+          await ScrapeJob.findByIdAndUpdate(jobId, { $set: { status: "failed", lastError: "duplicate_insert_failed", updatedAt: new Date() } });
         }
       } else {
-        // other DB error — rethrow so Bull can handle retries/backoff
-        console.error("Error saving RawCourse for url:", url, err);
-        throw err;
+        await ScrapeJob.findByIdAndUpdate(jobId, { $set: { status: "failed", lastError: String(err?.message ?? err), updatedAt: new Date() } });
+        console.error(`[${WORKER_ID}] Error saving RawCourse for ${url}:`, err);
+        return true;
       }
     }
 
-    // If crawl requested: discover internal links and enqueue them (non-recursive by default)
-    if (data.crawl) {
-      const maxPerSite = Number(data.maxPerSite ?? 25);
-      // prefer contentHtml, fallback to text
+    // Crawl: discover internal links and enqueue them
+    if (job.crawl) {
       const htmlToScan = fetched.contentHtml || String(fetched.text || "");
       if (htmlToScan) {
-        const discovered = extractLinksFromHtml(htmlToScan, url, maxPerSite);
+        const discovered = extractLinksFromHtml(htmlToScan, url, job.maxPerSite ?? 25);
         if (discovered && discovered.length) {
           for (const d of discovered) {
+            if (!d.url || d.url === url) continue;
+            // make sure link not already saved and not already queued
+            const exists = await RawCourse.findOne({ url: d.url }).lean();
+            if (exists) continue;
             try {
-              // skip if duplicate in local cache or same as parent
-              if (!d.url || d.url === url) continue;
-              if (seenRecently(d.url)) continue;
-              // double-check against DB
-              const exists = await RawCourse.findOne({ url: d.url }).lean();
-              if (exists) {
-                markSeen(d.url);
-                continue;
-              }
-              // enqueue discovered link with crawl:false so it doesn't infinitely crawl (or adjust as desired)
-              await scrapeQueue.add(
-                "scrape",
+              await ScrapeJob.findOneAndUpdate(
+                { url: d.url },
                 {
-                  url: d.url,
-                  title: d.title,
-                  usePuppeteer: data.usePuppeteer ?? false,
-                  crawl: false,
-                  delayMs: data.delayMs ?? 1000,
-                  randomize: !!data.randomize,
-                  maxPerSite: 0,
+                  $setOnInsert: {
+                    title: d.title || "",
+                    usePuppeteer: false,
+                    crawl: false,
+                    delayMs: job.delayMs ?? 1000,
+                    randomize: false,
+                    maxPerSite: 0,
+                    status: "pending",
+                    attempts: 0,
+                  },
                 },
-                { attempts: 3, backoff: { type: "exponential", delay: 2000 } }
+                { upsert: true }
               );
-            } catch (e) {
-              const msg = (e as any)?.message ?? e;
-              console.warn("enqueue discovered link failed (continuing):", d.url, msg);
+            } catch (err) {
+              // ignore duplicates or errors for discovered links
             }
           }
         }
       }
     }
 
-    // politeness sleep
-    await sleep(waitMs);
+    // Politeness wait using configured delayMs + jitter
+    const delayMs = Number(job.delayMs ?? 1000);
+    const jitter = job.randomize ? Math.floor(Math.random() * delayMs) : 0;
+    await sleep(delayMs + jitter);
 
-    return { ok: true, url, status: "processed" };
+    return true;
   } catch (err: any) {
-    console.error("Worker error processing url:", url, (err as any)?.message ?? err);
-    // Rethrow to let Bull handle retries/backoff
-    throw err;
+    console.error(`[${WORKER_ID}] Worker error for job ${jobId}`, err?.message ?? err);
+    await ScrapeJob.findByIdAndUpdate(jobId, { $set: { status: "failed", lastError: String(err?.message ?? err), updatedAt: new Date() } });
+    return true;
   }
 }
 
-// Main worker registration
+async function runLoop() {
+  while (true) {
+    try {
+      const didWork = await processOneJob();
+      if (!didWork) {
+        await sleep(POLL_INTERVAL_MS);
+      }
+    } catch (err) {
+      console.error(`[${WORKER_ID}] Unexpected worker loop error`, err);
+      await sleep(POLL_INTERVAL_MS);
+    }
+  }
+}
+
 async function start() {
   await ensureDbConnected();
-  console.log("Starting scrape worker, concurrency =", CONCURRENCY);
-  scrapeQueue.process(CONCURRENCY, async (job: any) => {
-    return handleJob(job);
-  });
-
-  scrapeQueue.on("completed", (job, result) => {
-    console.log("Job completed:", job.id, (result && (result as any).status) || "");
-  });
-
-  scrapeQueue.on("failed", (job, err) => {
-    console.error("Job failed:", job.id, (err && (err as any).message) || err);
-  });
-
-  process.on("SIGINT", async () => {
-    console.log("Shutting down worker...");
-    try { await scrapeQueue.close(); } catch (e) {}
-    try { await mongoose.disconnect(); } catch (e) {}
-    process.exit(0);
+  console.log("Starting scrape worker (mongo-backed). Poll interval:", POLL_INTERVAL_MS);
+  runLoop().catch((e) => {
+    console.error("Worker runLoop failed:", e);
+    process.exit(1);
   });
 }
 

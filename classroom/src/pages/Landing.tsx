@@ -51,7 +51,7 @@ export default function LandingPage() {
 
   return (
     <div className="space-y-8">
-      {/* Hero (unchanged) */}
+      {/* Hero */}
       <section className="rounded-lg p-8 bg-gradient-to-r from-white/60 to-slate-50/40 dark:from-slate-900/40 dark:to-slate-800/40 border border-surface-border">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
           <div>
@@ -68,9 +68,10 @@ export default function LandingPage() {
             </div>
 
             <p className="text-classroom-muted max-w-xl">
-              Structured lessons, helpful videos, personal notes, and instructor
-              tools — all in one place. Jump into a lesson, take notes, or open
-              the dashboard to manage courses and students.
+              Hi — I’m Lawrence (M3n0koOg). This is a friendly space where I
+              share free software and cybersecurity lessons. The Learning Lounge
+              is built to be easy on the eyes, accessible, and practical: short
+              lessons, simple examples, and tools you can run locally.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -97,8 +98,11 @@ export default function LandingPage() {
             </div>
 
             <div className="mt-6 text-sm text-classroom-muted">
-              Tip: open <strong>Accessibility</strong> (top-right) to set font
-              scale and theme for the reader.
+              Our mission: make high-quality tech training available to people
+              who are under-served, neurodivergent, or learning with vision
+              impairments. Use <strong>Accessibility</strong> (top-right) to set
+              reader preferences — font scale, spacing, color palette, and a
+              simplified reader that explains lessons in plain language.
             </div>
           </div>
 
@@ -143,7 +147,7 @@ export default function LandingPage() {
                     Accessibility
                   </div>
                   <div className="font-semibold mt-1">
-                    Adjust reader settings
+                    Set reader preferences
                   </div>
                 </Link>
               </div>
@@ -207,7 +211,7 @@ export default function LandingPage() {
               icon="📖"
             />
 
-            {/* Admin tile: only clickable for admin role */}
+            {/* Admin tile */}
             {user?.role === "admin" ? (
               <SectionTile
                 to="/dashboard/admin/users"
