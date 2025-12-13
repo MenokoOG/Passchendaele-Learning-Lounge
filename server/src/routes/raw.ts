@@ -14,8 +14,7 @@ function safeSliceForPrompt(s: string, maxChars = 15000) {
   if (s.length <= maxChars) return s;
   const cut = s.slice(0, maxChars);
   const lastNewline = cut.lastIndexOf("\n\n");
-  if (lastNewline > Math.floor(maxChars * 0.5))
-    return cut.slice(0, lastNewline);
+  if (lastNewline > Math.floor(maxChars * 0.5)) return cut.slice(0, lastNewline);
   return cut;
 }
 
@@ -54,7 +53,8 @@ router.post("/:id/rewrite", async (req, res) => {
   const doc = await RawCourse.findById(id);
   if (!doc) return res.status(404).json({ error: "Not found" });
 
-  const content = doc.text ?? doc.html;
+  // Use contentHtml property (not html) and fallback to text
+  const content = (doc as any).text ?? (doc as any).contentHtml;
   if (!content) return res.status(400).json({ error: "No content to rewrite" });
 
   // fallback shortcut when no OPENAI key available
@@ -62,8 +62,8 @@ router.post("/:id/rewrite", async (req, res) => {
     const short = String(content).replace(/\s+/g, " ").slice(0, 4000);
     const fallback = `PARAPHRASE (FALLBACK MODE): ${short}`;
     // store minimal metadata
-    doc.metadata = {
-      ...doc.metadata,
+    (doc as any).metadata = {
+      ...(doc as any).metadata,
       lastParaphrase: {
         at: new Date(),
         style,
@@ -76,7 +76,7 @@ router.post("/:id/rewrite", async (req, res) => {
   }
 
   // return cached paraphrase unless forced
-  const cached = doc.metadata?.lastParaphrase?.rewrittenText;
+  const cached = (doc as any).metadata?.lastParaphrase?.rewrittenText;
   if (cached && !force) {
     return res.json({ rewritten: cached, mode: "cache" });
   }
@@ -84,7 +84,7 @@ router.post("/:id/rewrite", async (req, res) => {
   // build prompt (trimmed)
   const safeOriginal = safeSliceForPrompt(String(content), 15000);
   const prompt = buildVoicePrompt({
-    title: doc.title || "",
+    title: (doc as any).title || "",
     original: safeOriginal,
     style,
     voiceSample,
@@ -117,8 +117,8 @@ router.post("/:id/rewrite", async (req, res) => {
       JSON.stringify(data);
 
     // persist paraphrase
-    doc.metadata = {
-      ...doc.metadata,
+    (doc as any).metadata = {
+      ...(doc as any).metadata,
       lastParaphrase: {
         at: new Date(),
         style,
@@ -145,13 +145,13 @@ router.post("/:id/rewrite", async (req, res) => {
     if (code === "insufficient_quota" || status === 429) {
       try {
         const local = localRewriteDocument({
-          title: doc.title || "",
-          html: String((doc as any).contentHtml || doc.html || ""),
-          text: String(doc.text || ""),
+          title: (doc as any).title || "",
+          html: String((doc as any).contentHtml || ""),
+          text: String((doc as any).text || ""),
         });
 
-        doc.metadata = {
-          ...doc.metadata,
+        (doc as any).metadata = {
+          ...(doc as any).metadata,
           lastParaphrase: {
             at: new Date(),
             style,
@@ -168,7 +168,7 @@ router.post("/:id/rewrite", async (req, res) => {
           mode: "local-fallback",
           info: "OpenAI reported insufficient_quota or 429 — local fallback used.",
         });
-      } catch (lfErr) {
+      } catch (lfErr: any) {
         console.error("Local fallback failed:", lfErr);
         return res
           .status(500)

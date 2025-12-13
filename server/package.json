@@ -9,17 +9,20 @@
     "start": "node dist/index.js",
     "scrape:links": "ts-node src/scripts/scrape_links.ts",
     "clean": "rimraf dist node_modules",
-    "seed": "node ./seed.cjs"
+    "seed": "node ./seed.cjs",
+    "start:worker": "ts-node -r dotenv/config src/worker/scrapeWorker.ts"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
     "axios": "^1.5.0",
     "bcryptjs": "^3.0.3",
+    "bull": "^4.16.5",
     "cheerio": "^1.0.0-rc.12",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "html-to-text": "^9.0.5",
+    "ioredis": "^5.8.2",
     "jsdom": "^22.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^7.7.0",
