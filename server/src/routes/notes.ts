@@ -2,6 +2,12 @@
 import express from "express";
 import { Note } from "../models/Note.js";
 import { requireAuth } from "../middleware/auth.js";
+import {
+  requireUser,
+  verifyOwnership,
+  sendError,
+  sendSuccess,
+} from "../utils/helpers.js";
 
 const router = express.Router();
 
@@ -11,15 +17,16 @@ const router = express.Router();
  */
 router.get("/", requireAuth, async (req, res) => {
   try {
-    if (!req.user || !req.user.id)
-      return res.status(401).json({ error: "Unauthorized" });
-    const notes = await Note.find({ user: req.user.id })
+    const userId = requireUser(req, res);
+    if (!userId) return;
+
+    const notes = await Note.find({ user: userId })
       .sort({ updatedAt: -1 })
       .lean();
-    return res.json(notes);
+    return sendSuccess(res, notes);
   } catch (err) {
     console.error("notes.list error:", err);
-    return res.status(500).json({ error: "Failed to list notes" });
+    return sendError(res, 500, "Failed to list notes");
   }
 });
 
@@ -30,20 +37,20 @@ router.get("/", requireAuth, async (req, res) => {
  */
 router.post("/", requireAuth, async (req, res) => {
   try {
-    if (!req.user || !req.user.id)
-      return res.status(401).json({ error: "Unauthorized" });
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const { title, body, content } = req.body || {};
     const n = new Note({
-      user: req.user.id,
+      user: userId,
       title: title || "Untitled",
       content: content ?? body ?? "",
     });
     await n.save();
-    return res.json({ ok: true, note: n });
+    return sendSuccess(res, { ok: true, note: n });
   } catch (err) {
     console.error("notes.create error:", err);
-    return res.status(500).json({ error: "Failed to create note" });
+    return sendError(res, 500, "Failed to create note");
   }
 });
 
@@ -53,21 +60,20 @@ router.post("/", requireAuth, async (req, res) => {
  */
 router.put("/:id", requireAuth, async (req, res) => {
   try {
-    if (!req.user || !req.user.id)
-      return res.status(401).json({ error: "Unauthorized" });
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const n = await Note.findById(req.params.id);
-    if (!n) return res.status(404).json({ error: "Not found" });
-    if (String(n.user) !== String(req.user.id))
-      return res.status(403).json({ error: "Forbidden" });
+    if (!n) return sendError(res, 404, "Not found");
+    if (!verifyOwnership(req, res, n.user)) return;
 
     n.title = req.body.title ?? n.title;
     n.content = req.body.content ?? req.body.body ?? n.content;
     await n.save();
-    return res.json({ ok: true, note: n });
+    return sendSuccess(res, { ok: true, note: n });
   } catch (err) {
     console.error("notes.update error:", err);
-    return res.status(500).json({ error: "Failed to update note" });
+    return sendError(res, 500, "Failed to update note");
   }
 });
 
@@ -76,18 +82,18 @@ router.put("/:id", requireAuth, async (req, res) => {
  */
 router.delete("/:id", requireAuth, async (req, res) => {
   try {
-    if (!req.user || !req.user.id)
-      return res.status(401).json({ error: "Unauthorized" });
+    const userId = requireUser(req, res);
+    if (!userId) return;
 
     const n = await Note.findById(req.params.id);
-    if (!n) return res.status(404).json({ error: "Not found" });
-    if (String(n.user) !== String(req.user.id))
-      return res.status(403).json({ error: "Forbidden" });
+    if (!n) return sendError(res, 404, "Not found");
+    if (!verifyOwnership(req, res, n.user)) return;
+
     await n.deleteOne();
-    return res.json({ ok: true });
+    return sendSuccess(res, { ok: true });
   } catch (err) {
     console.error("notes.delete error:", err);
-    return res.status(500).json({ error: "Failed to delete note" });
+    return sendError(res, 500, "Failed to delete note");
   }
 });
 

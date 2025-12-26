@@ -40,3 +40,29 @@ export function extractLicenseFromText(
 
   return null;
 }
+
+/**
+ * Helper function to extract license from both text and HTML content
+ * Returns the first license found, preferring text over HTML
+ */
+export function extractLicenseFromContent(data: {
+  text?: string | null;
+  contentHtml?: string | null;
+}): {
+  licenseText: string | null;
+  licenseCaptured: boolean;
+} {
+  // Try extracting from plain text first
+  let licenseText = extractLicenseFromText(data.text || "");
+
+  // If not found in text, try HTML (strip tags first)
+  if (!licenseText && data.contentHtml) {
+    const strippedHtml = String(data.contentHtml).replace(/<[^>]+>/g, " ");
+    licenseText = extractLicenseFromText(strippedHtml);
+  }
+
+  return {
+    licenseText,
+    licenseCaptured: !!licenseText,
+  };
+}

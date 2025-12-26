@@ -10,7 +10,10 @@
     "scrape:links": "ts-node src/scripts/scrape_links.ts",
     "clean": "rimraf dist node_modules",
     "seed": "node ./seed.cjs",
-    "start:worker": "ts-node -r dotenv/config src/worker/scrapeWorker.ts"
+    "start:worker": "ts-node -r dotenv/config src/worker/scrapeWorker.ts",
+    "test": "NODE_ENV=test jest --detectOpenHandles",
+    "test:watch": "NODE_ENV=test jest --watch",
+    "test:coverage": "NODE_ENV=test jest --coverage"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
@@ -32,15 +35,21 @@
     "puppeteer": "^24.32.1"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/cheerio": "^0.22.35",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.20",
+    "@types/jest": "^29.5.12",
     "@types/jsdom": "^27.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.4",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.10.2",
+    "@types/supertest": "^6.0.2",
+    "jest": "^29.7.0",
     "rimraf": "^5.0.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"

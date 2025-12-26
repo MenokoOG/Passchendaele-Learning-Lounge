@@ -2,7 +2,7 @@
 import express from "express";
 import { User } from "../models/User.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "../utils/auth.js";
 
 const router = express.Router();
 
@@ -28,8 +28,7 @@ router.post("/", requireAuth, requireRole("admin"), async (req, res) => {
       return res.status(409).json({ error: "User already exists" });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(String(password), salt);
+    const passwordHash = await hashPassword(String(password));
 
     const u = new User({
       username,
@@ -80,8 +79,7 @@ router.put("/:id", requireAuth, requireRole("admin"), async (req, res) => {
   if (typeof forcePasswordChange === "boolean")
     data.forcePasswordChange = forcePasswordChange;
   if (password) {
-    const salt = await bcrypt.genSalt(10);
-    data.passwordHash = await bcrypt.hash(String(password), salt);
+    data.passwordHash = await hashPassword(String(password));
   }
   try {
     const updated = await User.findByIdAndUpdate(req.params.id, data, {
@@ -122,8 +120,7 @@ router.put("/me", requireAuth, async (req, res) => {
     if (typeof preferences === "object") data.preferences = preferences;
 
     if (password) {
-      const salt = await bcrypt.genSalt(10);
-      data.passwordHash = await bcrypt.hash(String(password), salt);
+      data.passwordHash = await hashPassword(String(password));
     }
 
     const updated = await User.findByIdAndUpdate(userId, data, {

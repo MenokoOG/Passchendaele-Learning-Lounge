@@ -3,7 +3,7 @@ import express from "express";
 import { ScrapeJob } from "../models/ScrapeJob.js";
 import { RawCourse } from "../models/RawCourse.js";
 import fetchAndExtract from "../utils/scraper_puppeteer.js";
-import { extractLicenseFromText } from "../utils/extract_license.js";
+import { extractLicenseFromContent } from "../utils/extract_license.js";
 import { isUrlAllowed } from "../utils/robots_check.js";
 import mongoose from "mongoose";
 
@@ -64,17 +64,11 @@ router.post("/", async (req, res) => {
         const fetched = await fetchAndExtract(url, {
           usePuppeteer: defaultUsePuppeteer,
         });
-        const licenseFromText = extractLicenseFromText(
-          String(fetched.text || "")
-        );
-        let licenseFromHtml: string | null = null;
-        if (!licenseFromText && fetched.contentHtml) {
-          licenseFromHtml = extractLicenseFromText(
-            (fetched.contentHtml || "").replace(/<[^>]+>/g, " ")
-          );
-        }
-        const licenseText = licenseFromText || licenseFromHtml || null;
-        const licenseCaptured = !!licenseText;
+
+        const { licenseText, licenseCaptured } = extractLicenseFromContent({
+          text: fetched.text,
+          contentHtml: fetched.contentHtml,
+        });
 
         const doc = new RawCourse({
           title: (fetched.title || title || url).slice(0, 300),

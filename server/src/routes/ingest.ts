@@ -1,7 +1,7 @@
 // server/src/routes/ingest.ts
 import express from "express";
 import { RawCourse } from "../models/RawCourse.js";
-import { extractLicenseFromText } from "../utils/extract_license.js";
+import { extractLicenseFromContent } from "../utils/extract_license.js";
 
 const router = express.Router();
 
@@ -23,18 +23,17 @@ router.post("/", async (req, res) => {
 
   try {
     // Extract license from text or HTML
-    const licenseFromText = extractLicenseFromText(payload.text || "");
-    const licenseFromHtml = extractLicenseFromText(
-      (payload.contentHtml || "").replace(/<[^>]+>/g, " ")
-    );
-    const license = licenseFromText || licenseFromHtml || null;
+    const { licenseText, licenseCaptured } = extractLicenseFromContent({
+      text: payload.text,
+      contentHtml: payload.contentHtml,
+    });
 
     // preserve incoming metadata but add details
     const incomingMeta = payload.metadata || {};
     const finalMeta = {
       ...incomingMeta,
-      licenseCaptured: !!license,
-      licenseText: license,
+      licenseCaptured,
+      licenseText,
       originalPayloadSource:
         payload.fetchedBy || incomingMeta.fetchedBy || "ingest",
       ingestedAt: new Date(),
@@ -65,7 +64,7 @@ router.post("/", async (req, res) => {
       ok: true,
       id: doc._id,
       message: "raw saved",
-      licenseCaptured: !!license,
+      licenseCaptured,
     });
   } catch (err: any) {
     console.error("ingest error", err);
