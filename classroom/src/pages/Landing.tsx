@@ -62,16 +62,17 @@ export default function LandingPage() {
               <div>
                 <div className="text-xs text-classroom-muted">Welcome to</div>
                 <h1 className="text-3xl md:text-4xl font-bold">
-                  M3n0koOg Learning Lounge
+                  M3n0ko0g Learning Lounge-MVP-Beta Test
                 </h1>
               </div>
             </div>
 
             <p className="text-classroom-muted max-w-xl">
-              Hi — I’m Lawrence (M3n0koOg). This is a friendly space where I
+              Hi — I’m Lawrence (M3n0ko0g). This is a friendly space where I
               share free software and cybersecurity lessons. The Learning Lounge
               is built to be easy on the eyes, accessible, and practical: short
-              lessons, simple examples, and tools you can run locally.
+              lessons, simple examples, and tools you can run locally. RIght now
+              we have Python lessons courtesy of Goolge and Geek for Geek.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -237,11 +238,12 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto text-sm text-classroom-muted">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <strong>M3n0koOg Learning Lounge</strong> — built for private
+              <strong>M3n0ko0g Learning Lounge</strong> — built for private
               training and classroom-style learning.
             </div>
             <div className="hidden sm:block">
-              Instructor: Senior Software Engineer M3n0koOg
+              Endorsed Source of Truth Software: Crimson Obsidian Industries and
+              Labs
             </div>
           </div>
         </div>

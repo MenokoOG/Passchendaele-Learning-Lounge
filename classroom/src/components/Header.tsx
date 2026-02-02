@@ -48,7 +48,8 @@ export default function Header(): JSX.Element {
               aria-hidden
               className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0"
               style={{
-                background: "linear-gradient(135deg,var(--accent,#ff8c00),#7c3aed)",
+                background:
+                  "linear-gradient(135deg,var(--accent,#ff8c00),#7c3aed)",
               }}
             >
               ML
@@ -56,7 +57,7 @@ export default function Header(): JSX.Element {
 
             <div className="leading-tight">
               <span className="text-lg font-semibold block text-slate-900 dark:text-slate-100">
-                M3n0koOg Learning Lounge
+                M3n0ko0g Learning Lounge
               </span>
               <span className="text-xs text-slate-500 dark:text-slate-400">
                 Practical, accessible learning for builders
@@ -119,11 +120,23 @@ export default function Header(): JSX.Element {
           >
             {open ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M6 18L18 6M6 6l12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                <path
+                  d="M6 18L18 6M6 6l12 12"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             ) : (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                <path
+                  d="M4 7h16M4 12h16M4 17h16"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             )}
           </button>
@@ -175,16 +188,28 @@ export default function Header(): JSX.Element {
                     Sign out
                   </button>
                 </div>
-                <Link to="/dashboard" onClick={() => setOpen(false)} className="btn-classroom mt-2 text-center">
+                <Link
+                  to="/dashboard"
+                  onClick={() => setOpen(false)}
+                  className="btn-classroom mt-2 text-center"
+                >
                   Open dashboard
                 </Link>
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Link to="/login" onClick={() => setOpen(false)} className="btn-surface flex-1 text-center">
+                <Link
+                  to="/login"
+                  onClick={() => setOpen(false)}
+                  className="btn-surface flex-1 text-center"
+                >
                   Sign in
                 </Link>
-                <Link to="/register" onClick={() => setOpen(false)} className="btn-classroom flex-1 text-center">
+                <Link
+                  to="/register"
+                  onClick={() => setOpen(false)}
+                  className="btn-classroom flex-1 text-center"
+                >
                   Register
                 </Link>
               </div>

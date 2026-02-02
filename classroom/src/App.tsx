@@ -74,9 +74,9 @@ function Header() {
           </div>
 
           <div>
-            <h1 className="text-2xl font-bold">M3n0koOg Learning Lounge</h1>
+            <h1 className="text-2xl font-bold">M3n0ko0g Learning Lounge</h1>
             <div className="text-sm text-slate-600 dark:text-slate-300">
-              Instructor: Senior Software Engineer M3n0koOg
+              Instructor: Senior Software Engineer M3n0ko0g
             </div>
           </div>
         </Link>
@@ -149,11 +149,11 @@ export default function App() {
           </div>
 
           <div className="text-xs text-slate-700 dark:text-slate-200">
-            <strong className="block">M3n0koOg Learning Lounge</strong>
+            <strong className="block">M3n0ko0g Learning Lounge</strong>
             <span className="opacity-80">Comfortable learning, quick code</span>
           </div>
           <div className="ml-auto text-xs text-slate-600 dark:text-slate-300">
-            <em>Instructor: Senior Software Engineer M3n0koOg</em>
+            <em>Instructor: Senior Software Engineer M3n0ko0g</em>
           </div>
         </div>
       </div>
