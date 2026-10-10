@@ -22,7 +22,7 @@ import axios from "axios";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { load } from "cheerio";
-import fetchFromUtils from "../utils/scraper_puppeteer.js";
+import fetchFromUtils from "../utils/scraper.js";
 import { extractLicenseFromText } from "../utils/extract_license.js";
 import { RawCourse } from "../models/RawCourse.js";
 dotenv.config();

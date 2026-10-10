@@ -1,10 +1,25 @@
-# M3n0koOg Learning Lounge — Online Classroom
+# Passchendaele Learning Lounge
 
-**M3n0koOg Learning Lounge** is an open-source, full-stack classroom platform for accessible technical training: programming, cybersecurity, and practical engineering skills. The project is designed to be modular, developer-friendly, and inclusive — with specific accessibility features (reader mode, text-to-speech, high-contrast / gentle palettes, font scaling) so lessons are easy to read and use for learners of all abilities.
+An accessible, open-source learning lounge on the **Battle of Passchendaele (Third Battle of Ypres, 1917)**. It ingests public pages from archives, museums and libraries in Belgium, the UK, Canada, Australia and New Zealand, stores each with its institution and reuse note, and presents them in a reader built for neurodivergent and low-vision readers (easy-reading mode, text-to-speech, palettes, font scaling).
 
-This repository contains a Node + TypeScript backend (ingest, normalization, optional paraphrase) and a React + Vite frontend (reader, accessibility controls, dashboards). The goal is to provide free, practical training and a welcoming contributor path for students and developers who want to learn by doing.
+Forked from the M3n0koOg Learning Lounge platform. Maintainer: **Lawrence Jefferson II (M3n0koOg)** — https://github.com/MenokoOG
 
-Project lead & maintainer: **Lawrence Jefferson II (M3n0koOg)** — https://github.com/MenokoOG
+## Quick start
+
+```bash
+pnpm install
+pnpm --filter ./server run dev:mongo   # local MongoDB, data in server/.mongo-data
+pnpm --filter ./server run seed        # demo users, lessons, research board
+pnpm --filter ./server run dev         # API  :4000
+pnpm --filter ./classroom run dev      # UI   :5173
+pnpm --filter ./server run scrape:links  # ingest the source catalogue
+```
+
+Server config lives in `server/.env` (see `server/.env.example`).
+
+## Source catalogue
+
+`server/src/data/passchendaele_sources.ts` is the single list of sources. Ingestion honours robots.txt, identifies itself as `PasschendaeleLoungeBot`, never bypasses bot walls, and refuses to store challenge pages. Sources that cannot be fetched are kept as **link-out only** with a note (currently LAC, Veterans Affairs Canada, the two National Library of NZ records, NZHistory and Britannica).
 
 ---
 

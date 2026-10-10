@@ -454,13 +454,13 @@ export default function LessonPage() {
                     }}
                     className="btn-surface px-2 py-1 text-xs"
                   >
-                    ▶️ Read
+                    Read aloud
                   </button>
                   <button
                     onClick={() => stopTTS()}
                     className="btn-surface px-2 py-1 text-xs"
                   >
-                    ⏹ Stop
+                    Stop
                   </button>
                 </div>
               </div>

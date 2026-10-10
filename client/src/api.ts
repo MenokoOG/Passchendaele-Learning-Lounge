@@ -36,6 +36,15 @@ export async function rewrite(
 export async function scrapeLinks(
   links: Array<{ title: string; url: string }>
 ) {
-  const res = await axios.post(`${API}/api/scrape`, { links });
+  const res = await axios.post(
+    `${API}/api/scrape`,
+    { links, processNow: true, delayMs: 1500 },
+    { timeout: 900000 }
+  );
   return res.data;
+}
+
+export async function listSources() {
+  const res = await axios.get(`${API}/api/scrape/sources`);
+  return res.data as { nations: Record<string, string>; sources: any[] };
 }

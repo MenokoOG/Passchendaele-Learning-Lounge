@@ -1,5 +1,6 @@
 import puppeteer from "puppeteer";
 import { splitIntoSections } from "./splitter.js";
+import { SCRAPER_USER_AGENT } from "./scraper_identity.js";
 import { JSDOM } from "jsdom";
 import { PUPPETEER_SKIP_CHROMIUM_DOWNLOAD } from "../config.js";
 
@@ -50,7 +51,7 @@ export default async function fetchAndExtract(
 
   try {
     await page.setUserAgent(
-      "google-tee-scraper/1.0 (+https://ljefferson-menoko-site.netlify.app)"
+      SCRAPER_USER_AGENT
     );
 
     await page.goto(url, {
@@ -64,12 +65,9 @@ export default async function fetchAndExtract(
     // trim UI / noise (keeps content)
     await page.evaluate(() => {
       const removeSelectors = [
-        ".devsite-concierge",
-        ".devsite-header",
         "nav",
         "footer",
         ".site-footer",
-        ".adsbygoogle",
         "script",
         "style",
       ];
@@ -85,8 +83,6 @@ export default async function fetchAndExtract(
         "article",
         "main",
         "#content",
-        ".devsite-article",
-        ".devsite-content",
         ".article",
         ".blog-post",
       ];

@@ -1,5 +1,5 @@
 {
-  "name": "google-Python",
+  "name": "passchendaele-learning-lounge",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
@@ -7,9 +7,9 @@
     "client"
   ],
   "scripts": {
-    "start:server": "pnpm --filter server run start",
-    "start:client": "pnpm --filter client run dev",
-    "start": "concurrently \"pnpm --filter server run dev\" \"pnpm --filter client run dev\"",
+    "start:server": "pnpm --filter ./server run start",
+    "start:client": "pnpm --filter ./client run dev",
+    "start": "concurrently \"pnpm --filter ./server run dev\" \"pnpm --filter ./client run dev\"",
     "build": "pnpm -w -r run build",
     "seed": "node server/seed.cjs",
     "seed:ts": "NODE_ENV=development ts-node server/src/scripts/seed_users.ts"

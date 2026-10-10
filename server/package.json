@@ -1,16 +1,17 @@
 {
-  "name": "google-python-server",
+  "name": "passchendaele-lounge-server",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only --esm src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "build": "tsc -p .",
     "start": "node dist/index.js",
-    "scrape:links": "ts-node src/scripts/scrape_links.ts",
+    "scrape:links": "tsx src/scripts/scrape_links.ts",
     "clean": "rimraf dist node_modules",
     "seed": "node ./seed.cjs",
-    "start:worker": "ts-node -r dotenv/config src/worker/scrapeWorker.ts",
+    "dev:mongo": "node scripts/dev-mongo.mjs",
+    "start:worker": "tsx src/worker/scrapeWorker.ts",
     "test": "NODE_ENV=test jest --detectOpenHandles",
     "test:watch": "NODE_ENV=test jest --watch",
     "test:coverage": "NODE_ENV=test jest --coverage"
@@ -47,11 +48,13 @@
     "@types/node": "^24.10.2",
     "@types/supertest": "^6.0.2",
     "jest": "^29.7.0",
+    "mongodb-memory-server": "^11.3.0",
     "rimraf": "^5.0.0",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3"
   }
 }

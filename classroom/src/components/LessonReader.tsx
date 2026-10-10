@@ -122,8 +122,10 @@ export default function LessonReader({
           <div style={{ fontFamily: "var(--reader-font-family, inherit)" }}>
             {initialText ? (
               initialText
-                .split("\n")
-                .slice(0, 8)
+                .split(/\n+/)
+                .map((p) => p.replace(/\s+/g, " ").trim())
+                .filter(Boolean)
+                .slice(0, 12)
                 .map((p, i) => <p key={i}>{p}</p>)
             ) : initialHtml ? (
               <div dangerouslySetInnerHTML={{ __html: initialHtml }} />
