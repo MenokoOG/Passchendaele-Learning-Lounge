@@ -116,3 +116,12 @@ export async function adminTriggerBackup() {
   const r = await client.post("/api/admin/system/backup");
   return r.data;
 }
+
+/* ---------------- Passchendaele source catalogue ---------------- */
+export async function listSources() {
+  const r = await client.get("/api/scrape/sources");
+  return r.data as {
+    nations: Record<string, string>;
+    sources: any[];
+  };
+}

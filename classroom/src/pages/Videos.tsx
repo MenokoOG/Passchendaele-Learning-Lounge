@@ -116,7 +116,8 @@ export default function Videos() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2">
-        <h2 className="text-xl font-semibold mb-4">Videos</h2>
+        <h2 className="text-3xl font-black mb-2">Film and voices</h2>
+        <p className="mb-4 text-classroom-muted max-w-[64ch]">Film and recorded testimony linked from the sources, where an archive provides it.</p>
 
         {loading && (
           <div className="space-y-4">

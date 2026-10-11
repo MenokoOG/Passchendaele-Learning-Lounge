@@ -27,7 +27,7 @@ router.get("/export", async (_req, res) => {
   const all = await RawCourse.find().sort({ fetchedAt: -1 });
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename=google_raw_${Date.now()}.json`
+    `attachment; filename=passchendaele_raw_${Date.now()}.json`
   );
   res.json(all);
 });

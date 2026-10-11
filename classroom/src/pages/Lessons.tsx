@@ -91,7 +91,8 @@ export default function Lessons() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2">
-        <h2 className="text-xl font-semibold mb-4">Lessons</h2>
+        <h2 className="text-3xl font-black mb-2">Lessons and source texts</h2>
+        <p className="mb-4 text-classroom-muted max-w-[64ch]">Pages from archives and museums on the Battle of Passchendaele, kept with their holder and a link to the original.</p>
 
         {loading ? (
           <div className="space-y-4">

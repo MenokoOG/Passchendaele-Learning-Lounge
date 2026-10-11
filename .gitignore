@@ -52,3 +52,4 @@ Thumbs.db
 .nx/cache
 *.tsbuildinfo
 *.json
+.mongo-data

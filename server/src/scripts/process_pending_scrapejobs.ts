@@ -24,7 +24,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import mongoose from "mongoose";
-import fetchAndExtract from "../utils/scraper_puppeteer.js";
+import fetchAndExtract from "../utils/scraper.js";
 import { extractLicenseFromText } from "../utils/extract_license.js";
 import { isUrlAllowed } from "../utils/robots_check.js";
 import { RawCourse } from "../models/RawCourse.js";

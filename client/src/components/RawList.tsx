@@ -21,7 +21,7 @@ export default function RawList() {
 
   return (
     <div style={{ padding: 16 }}>
-      <h3>Stored raw lessons</h3>
+      <h3>Stored source records</h3>
       <button onClick={load} disabled={loading}>
         Refresh
       </button>
@@ -33,7 +33,7 @@ export default function RawList() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `google_raw_${Date.now()}.json`;
+            a.download = `passchendaele_raw_${Date.now()}.json`;
             a.click();
           });
         }}

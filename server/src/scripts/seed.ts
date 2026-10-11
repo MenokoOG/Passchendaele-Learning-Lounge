@@ -141,20 +141,38 @@ async function seed() {
     // Lessons
     const lessons = [
       {
-        title: "Intro to Python",
-        slug: "intro-to-python",
-        summary: "Python basics: variables, types, printing",
+        title: "Why Flanders, 1917: the road to Third Ypres",
+        slug: "why-flanders-1917",
+        summary: "Why the Allies attacked out of the Ypres salient in the summer of 1917.",
         contentHtml:
-          "<article><h2>Intro to Python</h2><p>Variables, types, and print()</p></article>",
+          "<article><h2>Why Flanders, 1917</h2><p>The British had held the Ypres salient since 1914, overlooked on three sides by German-held ridges. In 1917 the Allied plan was to break out of it, clear the ridge running from Passchendaele towards Gheluvelt, and open a way towards the Belgian coast and its German naval bases.</p><p>It was also a question of the coalition: after the failed French offensive of April 1917 and the army mutinies that followed, the British took the lead on the Western Front. The offensive was prepared by the capture of the Messines Ridge on 7 June 1917.</p><h3>Questions to ask</h3><ul><li>Which aims were stated at the time, and which were added afterwards?</li><li>What did the ground look like before the bombardment began?</li></ul></article>",
         owner: instructor._id,
         published: true,
       },
       {
-        title: "Control Flow",
-        slug: "control-flow",
-        summary: "If/else and loops",
+        title: "Timeline: 31 July - 10 November 1917",
+        slug: "timeline-third-ypres",
+        summary: "The phases of the offensive in order, from Pilckem Ridge to the capture of Passchendaele village.",
         contentHtml:
-          "<article><h2>Control Flow</h2><p>if, for, while with examples.</p></article>",
+          "<article><h2>Timeline of Third Ypres</h2><ol><li><strong>31 Jul - 2 Aug</strong> Battle of Pilckem Ridge</li><li><strong>16 - 18 Aug</strong> Battle of Langemarck</li><li><strong>20 - 25 Sep</strong> Battle of the Menin Road Ridge</li><li><strong>26 Sep - 3 Oct</strong> Battle of Polygon Wood</li><li><strong>4 Oct</strong> Battle of Broodseinde</li><li><strong>9 Oct</strong> Battle of Poelcappelle</li><li><strong>12 Oct</strong> First Battle of Passchendaele</li><li><strong>26 Oct - 10 Nov</strong> Second Battle of Passchendaele; the Canadian Corps takes the village on 6 November</li></ol><p>Battle names and boundaries were fixed by the Battles Nomenclature Committee after the war. Compare them with the dates your sources use.</p></article>",
+        owner: instructor._id,
+        published: true,
+      },
+      {
+        title: "A coalition on one ridge",
+        slug: "coalition-on-one-ridge",
+        summary: "British, Canadian, Australian, New Zealand, South African, French and Belgian troops, and the German Fourth Army opposite them.",
+        contentHtml:
+          "<article><h2>Who fought</h2><p>Third Ypres was fought by a coalition. British divisions carried most of the offensive, with Australian and New Zealand divisions prominent in September and October, and the Canadian Corps taking over the final phase. French and Belgian forces held the northern flank. Opposite them stood the German Fourth Army.</p><p>Each nation keeps its own archive of the same days: unit war diaries, photographs and official histories. That is why the Sources page groups material by country.</p></article>",
+        owner: instructor._id,
+        published: true,
+      },
+      {
+        title: "Reading the evidence: primary and secondary sources",
+        slug: "reading-the-evidence",
+        summary: "How to work with a war diary, a trench map, an aerial photograph and a veteran's testimony.",
+        contentHtml:
+          "<article><h2>Reading the evidence</h2><p>A <strong>unit war diary</strong> records what a battalion's staff thought worth writing down that day. A <strong>trench map</strong> shows what was known, not what was true. An <strong>aerial photograph</strong> shows ground, not intent. <strong>Testimony</strong> recorded decades later carries memory as well as fact.</p><h3>Three checks</h3><ol><li>Who made this, and when?</li><li>What could they not have known?</li><li>Which other source confirms or contradicts it?</li></ol></article>",
         owner: instructor._id,
         published: true,
       },
@@ -174,7 +192,7 @@ async function seed() {
       {
         user: student._id,
         title: "Welcome note",
-        content: "This is your first note — edit or delete it.",
+        content: "This is your first note. Record questions about sources, dates and units here.",
       },
       { upsert: true, new: true }
     );
@@ -182,17 +200,17 @@ async function seed() {
 
     // Kanban board
     const boardDoc = await Board.findOneAndUpdate(
-      { title: "Course Sprint 1" },
+      { title: "Research Sprint 1: Reading the Ridge" },
       {
-        title: "Course Sprint 1",
+        title: "Research Sprint 1: Reading the Ridge",
         owner: instructor._id,
         columns: [
           {
             name: "To do",
             tasks: [
               {
-                title: "Write lesson: Intro to Python",
-                description: "Draft content and examples",
+                title: "Compare casualty estimates from three institutions",
+                description: "Note where the figures differ and why; cite each source",
                 createdAt: new Date(),
               },
             ],

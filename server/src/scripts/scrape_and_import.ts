@@ -1,5 +1,5 @@
 // server/src/scripts/scrape_and_import.ts
-import fetchAndExtract from "../utils/scraper_puppeteer.js";
+import fetchAndExtract from "../utils/scraper.js";
 import axios from "axios";
 import fs from "fs";
 import path from "path";

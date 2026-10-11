@@ -17,7 +17,7 @@ dotenv.config();
 import mongoose from "mongoose";
 import { ScrapeJob } from "../models/ScrapeJob.js";
 import { RawCourse } from "../models/RawCourse.js";
-import fetchAndExtract from "../utils/scraper_puppeteer.js";
+import fetchAndExtract from "../utils/scraper.js";
 import { extractLicenseFromText } from "../utils/extract_license.js";
 import { load } from "cheerio";
 

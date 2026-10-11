@@ -1,20 +1,36 @@
-import React, { useState } from "react";
-import { LINKS } from "../links";
-import { scrapeLinks } from "../api";
+import React, { useEffect, useState } from "react";
+import { scrapeLinks, listSources } from "../api";
+
+type Source = {
+  id: string;
+  title: string;
+  url: string;
+  institution: string;
+  scrape: boolean;
+  note?: string;
+};
 
 export default function LinkList({ onDone }: { onDone?: () => void }) {
+  const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(false);
   const [log, setLog] = useState<string[]>([]);
+
+  useEffect(() => {
+    listSources()
+      .then((d) => setSources(d.sources || []))
+      .catch((e) => setLog([`Could not load sources: ${e.message || e}`]));
+  }, []);
 
   async function start() {
     setLoading(true);
     setLog([]);
     try {
-      // attach usePuppeteer:true per link if you want dynamic capture:
-      const linksWithFlag = LINKS.map((l) => ({ ...l, usePuppeteer: true }));
-      const result = await scrapeLinks(linksWithFlag as any);
-      setLog((l) => [...l, "Scrape complete."]);
-      console.log(result);
+      const links = sources
+        .filter((s) => s.scrape)
+        .map((s) => ({ title: s.title, url: s.url }));
+      const res = await scrapeLinks(links);
+      const rows: any[] = res.results || [];
+      setLog(rows.map((r) => `${r.status}: ${r.url}${r.error ? " (" + r.error + ")" : ""}`));
       onDone?.();
     } catch (err: any) {
       setLog((l) => [...l, `Error: ${err.message || err}`]);
@@ -25,18 +41,22 @@ export default function LinkList({ onDone }: { onDone?: () => void }) {
 
   return (
     <div style={{ padding: 16, border: "1px solid #ddd", borderRadius: 8 }}>
-      <h3>Google Python Links</h3>
+      <h3>Passchendaele sources ({sources.length})</h3>
       <ol>
-        {LINKS.map((l) => (
-          <li key={l.url}>
-            <a href={l.url} target="_blank" rel="noreferrer">
-              {l.title}
-            </a>
+        {sources.map((s) => (
+          <li key={s.id}>
+            <a href={s.url} target="_blank" rel="noreferrer">
+              {s.title}
+            </a>{" "}
+            <small>
+              {s.institution}
+              {!s.scrape && s.note ? ` — link-out only: ${s.note}` : ""}
+            </small>
           </li>
         ))}
       </ol>
-      <button onClick={start} disabled={loading} style={{ marginTop: 8 }}>
-        {loading ? "Scraping…" : "Fetch & Save to DB"}
+      <button onClick={start} disabled={loading || !sources.length} style={{ marginTop: 8 }}>
+        {loading ? "Scraping…" : "Fetch & save to DB"}
       </button>
       <div style={{ marginTop: 8 }}>
         {log.map((s, i) => (

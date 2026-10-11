@@ -1,5 +1,6 @@
 // server/src/utils/robots_check.ts
 import axios from "axios";
+import { SCRAPER_BOT_NAME } from "./scraper_identity.js";
 
 /**
  * Very small robots.txt checker:
@@ -14,7 +15,7 @@ import axios from "axios";
 
 export async function isUrlAllowed(
   url: string,
-  userAgent = "google-tee-bot/1.0"
+  userAgent = SCRAPER_BOT_NAME
 ): Promise<boolean> {
   try {
     const u = new URL(url);
