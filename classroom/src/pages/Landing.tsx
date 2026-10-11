@@ -100,7 +100,7 @@ export default function LandingPage() {
           >
             The ridge, the mud,
             <br />
-            and the <span style={{ color: "var(--dark-red)" }}>record</span> they left.
+            and the <span style={{ color: "var(--classroom-primary)" }}>record</span> they left.
           </h1>
 
           <p className="mt-6 text-lg max-w-[60ch] text-classroom-muted">

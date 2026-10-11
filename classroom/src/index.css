@@ -76,7 +76,7 @@
 
 :root.dark,
 html.dark {
-  --classroom-primary: #d44a4a; /* lighter red so links/text keep contrast on dark */
+  --classroom-primary: #e05a5a; /* lighter red: 4.9:1 on --surface-bg, keeps links/text readable on dark */
   --classroom-primary-600: #b83a3a;
   --classroom-strip: #e0902f;
   --classroom-strip-600: #c97d22;
@@ -438,7 +438,7 @@ html.easy-reading img {
   content: attr(data-ghost);
   position: absolute;
   left: -0.04em;
-  top: -0.32em;
+  top: 0.05em; /* stays inside the headline block, clear of the eyebrow tag */
   z-index: -1;
   font-family: var(--font-serif);
   font-weight: 900;
