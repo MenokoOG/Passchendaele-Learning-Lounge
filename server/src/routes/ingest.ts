@@ -2,15 +2,20 @@
 import express from "express";
 import { RawCourse } from "../models/RawCourse.js";
 import { extractLicenseFromContent } from "../utils/extract_license.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
 
 const router = express.Router();
 
 /**
- * POST /api/ingest
+ * POST /api/ingest  (instructor or admin only)
  * Accepts a lesson JSON (title, url, contentHtml, text, sections, metadata)
  * If body._id provided -> update, otherwise insert new doc.
  */
-router.post("/", async (req, res) => {
+router.post(
+  "/",
+  requireAuth,
+  requireRole("instructor", "admin"),
+  async (req, res) => {
   const payload = req.body;
   if (
     !payload ||
@@ -70,6 +75,7 @@ router.post("/", async (req, res) => {
     console.error("ingest error", err);
     res.status(500).json({ error: String(err.message || err) });
   }
-});
+  }
+);
 
 export default router;

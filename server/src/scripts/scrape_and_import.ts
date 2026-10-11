@@ -1,6 +1,7 @@
 // server/src/scripts/scrape_and_import.ts
 import fetchAndExtract from "../utils/scraper.js";
 import axios from "axios";
+import { getAuthHeaders } from "./auth_header.js";
 import fs from "fs";
 import path from "path";
 
@@ -43,7 +44,10 @@ async function main() {
 
   if (postArg) {
     console.log("Posting to", postArg);
-    const r = await axios.post(postArg, lesson, { timeout: 120000 });
+    const r = await axios.post(postArg, lesson, {
+      timeout: 120000,
+      headers: await getAuthHeaders(new URL(postArg).origin),
+    });
     console.log(
       "Server response:",
       r.status,

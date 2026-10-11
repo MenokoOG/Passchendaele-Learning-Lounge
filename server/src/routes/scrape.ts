@@ -5,6 +5,7 @@ import { RawCourse } from "../models/RawCourse.js";
 import fetchAndExtract from "../utils/scraper.js";
 import { extractLicenseFromContent } from "../utils/extract_license.js";
 import { isUrlAllowed } from "../utils/robots_check.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
 import {
   PASSCHENDAELE_SOURCES,
   NATION_LABELS,
@@ -25,7 +26,8 @@ router.get("/sources", (_req, res) => {
 });
 
 /**
- * POST /api/scrape
+ * POST /api/scrape  (instructor or admin only: it makes the server fetch
+ * arbitrary URLs and writes to the database)
  * Body:
  *  { links: [{ title?, url }], usePuppeteer?, crawl?, delayMs?, randomize?, maxPerSite? , processNow? }
  *
@@ -37,7 +39,11 @@ router.get("/sources", (_req, res) => {
  *
  * Response: { results: [ { url, status, jobId?, rawId?, error? } ] }
  */
-router.post("/", async (req, res) => {
+router.post(
+  "/",
+  requireAuth,
+  requireRole("instructor", "admin"),
+  async (req, res) => {
   const body = req.body || {};
   const links = Array.isArray(body.links) ? body.links : [];
   const defaultUsePuppeteer = !!body.usePuppeteer;
@@ -166,6 +172,7 @@ router.post("/", async (req, res) => {
   }
 
   return res.json({ results });
-});
+  }
+);
 
 export default router;
