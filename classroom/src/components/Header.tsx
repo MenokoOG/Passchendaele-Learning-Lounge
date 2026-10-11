@@ -14,7 +14,7 @@ const NAV_LINKS: Array<{ to: string; label: string; end?: boolean }> = [
 ];
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `px-3 py-2 text-sm a11y-focus cursor-pointer transition-colors border-b-2 ${
+  `px-3 py-2 text-sm whitespace-nowrap a11y-focus cursor-pointer transition-colors border-b-2 ${
     isActive
       ? "border-[var(--ochre)] font-bold text-[var(--text-default)]"
       : "border-transparent text-classroom-muted hover:text-[var(--text-default)] hover:border-[var(--dark-red)]"
@@ -63,19 +63,19 @@ export default function Header(): JSX.Element {
           </span>
           <span className="leading-tight">
             <span
-              className="block text-lg font-black"
+              className="block text-base font-black whitespace-nowrap"
               style={{ fontFamily: "var(--font-serif)" }}
             >
               Passchendaele Learning Lounge
             </span>
-            <span className="block text-xs mono text-classroom-muted">
+            <span className="hidden 2xl:block text-xs mono text-classroom-muted whitespace-nowrap">
               Third Ypres &middot; 1917 &middot; primary sources
             </span>
           </span>
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-2" aria-label="Main">
+        <nav className="hidden 2xl:flex items-center gap-2" aria-label="Main">
           <ul className="flex items-center">
             {NAV_LINKS.map((l) => (
               <li key={l.to}>
@@ -101,10 +101,10 @@ export default function Header(): JSX.Element {
               </div>
             ) : (
               <>
-                <Link to="/login" className="btn-surface text-sm">
+                <Link to="/login" className="btn-surface text-sm whitespace-nowrap">
                   Sign in
                 </Link>
-                <Link to="/sources" className="btn-classroom text-sm">
+                <Link to="/sources" className="btn-classroom text-sm hidden 2xl:inline-flex whitespace-nowrap">
                   Open the sources
                   <IconArrowRight size={16} />
                 </Link>
@@ -114,8 +114,7 @@ export default function Header(): JSX.Element {
         </nav>
 
         {/* Mobile actions */}
-        <div className="flex items-center gap-2 md:hidden">
-          <ThemeToggle />
+        <div className="flex items-center gap-2 2xl:hidden">
           <button
             onClick={() => setOpen((s) => !s)}
             aria-expanded={open}
@@ -132,7 +131,7 @@ export default function Header(): JSX.Element {
       <div
         id="mobile-menu"
         hidden={!open}
-        className="md:hidden border-t border-surface-border bg-[var(--surface-contrast)]"
+        className="2xl:hidden border-t border-surface-border bg-[var(--surface-contrast)]"
       >
         <div className="p-4">
           <ul className="flex flex-col gap-1">
@@ -150,6 +149,7 @@ export default function Header(): JSX.Element {
           </ul>
 
           <div className="mt-4 pt-4 border-t border-surface-border flex flex-col gap-3">
+            <ThemeToggle />
             {user ? (
               <div className="flex items-center justify-between">
                 <div>
