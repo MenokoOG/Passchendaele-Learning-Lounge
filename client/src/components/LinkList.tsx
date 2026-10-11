@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { scrapeLinks, listSources } from "../api";
+import { scrapeLinks, listSources, signIn, signOut, getToken } from "../api";
 
 type Source = {
   id: string;
@@ -14,6 +14,21 @@ export default function LinkList({ onDone }: { onDone?: () => void }) {
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(false);
   const [log, setLog] = useState<string[]>([]);
+  const [signedIn, setSignedIn] = useState(!!getToken());
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  async function login(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await signIn(username, password);
+      setPassword("");
+      setSignedIn(true);
+      setLog([]);
+    } catch (err: any) {
+      setLog([`Sign-in failed: ${err?.response?.data?.error || err.message || err}`]);
+    }
+  }
 
   useEffect(() => {
     listSources()
@@ -33,7 +48,11 @@ export default function LinkList({ onDone }: { onDone?: () => void }) {
       setLog(rows.map((r) => `${r.status}: ${r.url}${r.error ? " (" + r.error + ")" : ""}`));
       onDone?.();
     } catch (err: any) {
-      setLog((l) => [...l, `Error: ${err.message || err}`]);
+      if (err?.response?.status === 401 || err?.response?.status === 403) {
+        signOut();
+        setSignedIn(false);
+      }
+      setLog((l) => [...l, `Error: ${err?.response?.data?.error || err.message || err}`]);
     } finally {
       setLoading(false);
     }
@@ -55,7 +74,25 @@ export default function LinkList({ onDone }: { onDone?: () => void }) {
           </li>
         ))}
       </ol>
-      <button onClick={start} disabled={loading || !sources.length} style={{ marginTop: 8 }}>
+      {!signedIn && (
+        <form onSubmit={login} style={{ marginTop: 8, display: "flex", gap: 8 }}>
+          <input
+            placeholder="instructor or admin username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            autoComplete="username"
+          />
+          <input
+            type="password"
+            placeholder="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+          />
+          <button type="submit">Sign in</button>
+        </form>
+      )}
+      <button onClick={start} disabled={loading || !signedIn || !sources.length} style={{ marginTop: 8 }}>
         {loading ? "Scraping…" : "Fetch & save to DB"}
       </button>
       <div style={{ marginTop: 8 }}>

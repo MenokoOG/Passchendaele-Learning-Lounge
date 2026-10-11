@@ -19,6 +19,7 @@
 import fs from "fs";
 import path from "path";
 import axios from "axios";
+import { getAuthHeaders } from "./auth_header.js";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { load } from "cheerio";
@@ -151,7 +152,7 @@ async function main() {
 
       if (opts.post) {
         const postBase = (opts.post || "").replace(/\/$/, "");
-        const resp = await axios.post(`${postBase}/api/scrape`, { links: [{ url: u, title: doc.title }], crawl: opts.crawl, usePuppeteer: true, delayMs: opts.delayMs, randomize: opts.randomize }, { timeout: 120000 });
+        const resp = await axios.post(`${postBase}/api/scrape`, { links: [{ url: u, title: doc.title }], crawl: opts.crawl, usePuppeteer: true, delayMs: opts.delayMs, randomize: opts.randomize }, { timeout: 120000, headers: await getAuthHeaders(postBase) });
         results.push({ url: u, posted: true, serverResp: resp.data });
         console.log("Posted:", u, "server replied:", resp.status);
       } else {
@@ -214,7 +215,7 @@ async function main() {
             const discovered = Array.from(unique).map((x) => ({ url: x }));
             if (opts.post) {
               const postBase = (opts.post || "").replace(/\/$/, "");
-              const resp = await axios.post(`${postBase}/api/scrape`, { links: discovered.map((d) => ({ url: d.url })), crawl: false, usePuppeteer: true }, { timeout: 120000 });
+              const resp = await axios.post(`${postBase}/api/scrape`, { links: discovered.map((d) => ({ url: d.url })), crawl: false, usePuppeteer: true }, { timeout: 120000, headers: await getAuthHeaders(postBase) });
               results.push({ url: u, discoveredPosted: discovered.length, serverResp: resp.data });
               console.log(`Posted ${discovered.length} discovered links for ${u}`);
             } else {
