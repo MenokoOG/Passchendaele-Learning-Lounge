@@ -272,7 +272,7 @@ We mentor students and accept small, scoped contributions — please open an iss
 
 ## License & credits
 
-This project is released under the **MIT License**. See `LICENSE` for full text.
+This project is released under the **Apache License 2.0**. See `LICENSE` for full text.
 
 Core maintainer: **Lawrence Jefferson II (M3n0koOg)** — [https://github.com/MenokoOG](https://github.com/MenokoOG)
 

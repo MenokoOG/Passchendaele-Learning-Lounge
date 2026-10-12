@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Server typecheck
+        run: server/node_modules/.bin/tsc -p server --noEmit
+      - name: Server tests
+        run: pnpm --filter ./server run test
+      - name: Classroom build
+        run: pnpm --filter ./classroom run build
