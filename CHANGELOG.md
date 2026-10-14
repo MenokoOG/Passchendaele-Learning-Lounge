@@ -14,4 +14,4 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Notes
 
-- The npm lockfiles (`package-lock.json`, `classroom/package-lock.json`) are still tracked next to `pnpm-lock.yaml`. Remove them once pnpm is confirmed as the only package manager.
+- The npm lockfiles (`package-lock.json`, `classroom/package-lock.json`) are removed. `pnpm-lock.yaml` is the only lockfile.
