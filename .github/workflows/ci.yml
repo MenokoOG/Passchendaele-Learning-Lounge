@@ -9,6 +9,15 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    env:
+      # Test-only values. Not secrets.
+      JWT_SECRET: ci-test-secret-0123456789abcdef0123456789
+      TEST_MONGO_URI: mongodb://localhost:27017/test-db
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
